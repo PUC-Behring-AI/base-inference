@@ -1,0 +1,57 @@
+# Inscrição no trabalho noturno. A existência deste arquivo é a inscrição; o
+# corpo é anexado ao prompt genérico do motor. `.claude/portao`
+# (`./scripts/gate.sh`) é pré-requisito e está ao lado.
+#
+# Este é um repositório da PUC-Behring-AI, com outras pessoas trabalhando nele.
+# Ninguém aqui combinou receber PRs abertos de madrugada por uma sessão
+# autônoma, e um commit noturno aparece com a autoria de quem configurou o
+# sistema. Por isso o escopo aqui é o menor dos três repos inscritos, e o
+# critério não é "o que a noite consegue fazer" — é "o que um colega encontra de
+# manhã sem precisar de contexto que só o autor tem".
+#
+# E ELE É PÚBLICO. Verificado em 09/09/2026: `visibility: PUBLIC`, ao contrário
+# dos outros dois inscritos. A primeira versão deste arquivo foi escrita
+# presumindo repo de org privado, e a diferença não é de grau:
+#
+# - Branch, PR, título, corpo e diff são legíveis pelo mundo no instante do push.
+#   Um PR noturno malformado não é um erro interno, é publicação.
+# - Só o trabalho DESTE repositório pertence a ele. Nada trazido, reapontado ou
+#   lido primeiro em outro repo da mesma sessão entra aqui, nem em código nem em
+#   corpo de PR — inclusive nome de host interno, caminho de máquina e trecho de
+#   log de outro projeto.
+# - Nada de segredo em hipótese alguma, e isso não é afrouxado por o repo ser de
+#   trabalho: se um valor parece credencial, a noite para e registra.
+
+## Só issues com label `bug`
+
+`enhancement`, `tech-debt` e `documentation` mudam o rumo do projeto ou o que ele
+promete, e isso é conversa de equipe, não trabalho de uma sessão sozinha. Um
+`bug` tem um comportamento errado observável e um certo, o que é a única coisa
+que se verifica sem combinar nada com ninguém.
+
+Respeite `priority:P0` como precedência quando houver empate na ordenação.
+
+## O que a noite não toca aqui
+
+- **Nada de migração de schema**, nem de dado. Irreversível em ambiente
+  compartilhado.
+- **Nada de `docker-compose.yml`, `Dockerfile.ray`, `prometheus.yml` ou
+  `grafana/`.** É a infraestrutura que os colegas rodam; um diff ali quebra a
+  máquina de outra pessoa antes de qualquer revisão.
+- **Nada de `.env`, `.env.example` ou qualquer coisa com segredo.**
+- **Nada de `scripts/`** enquanto `colleague.sh` estiver com defeitos abertos
+  (#35, #36): mexer num script de provisionamento que já tem três formas de
+  resposta divergentes é onde uma sessão sozinha erra caro.
+
+## NÃO arme `--auto` no PR
+
+Outra pessoa lê o PR de manhã, e é esse o ponto de inscrever este repo. Deixe-o
+aberto e diga no log que ele espera leitura humana.
+
+## Pré-voo: dê tempo ao `git` na primeira chamada
+
+Medido em 09/09/2026: `git status --porcelain` aqui levou **mais de 25s na
+primeira execução** e 0,0s nas três seguintes. Não é defeito deste repositório —
+é cache frio, e provavelmente materialização de arquivo do iCloud em
+`~/Documents`. À 1h da manhã todo repo está frio. Se uma chamada de `git`
+demorar, espere; não conclua que o repo está quebrado.
