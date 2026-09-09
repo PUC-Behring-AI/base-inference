@@ -22,7 +22,20 @@
 # - Nada de segredo em hipótese alguma, e isso não é afrouxado por o repo ser de
 #   trabalho: se um valor parece credencial, a noite para e registra.
 
-## Só issues com label `bug`
+## Só issues com label `bug` — e agora isto é mecanismo
+
+    so-labels: bug
+    nunca-labels: security
+
+As duas linhas acima são lidas pelo script, que descarta nomeando a regra. Isto
+era só prosa até 09/09/2026, e prosa depende de a sessão obedecer a um parágrafo:
+medido no mesmo dia, a ferramenta devolvia **14 candidatas** aqui, a primeira
+sobre tag móvel de imagem. Num repositório PÚBLICO, essa é a diferença entre um
+colega encontrar um conserto de bug e encontrar um refactor de infraestrutura.
+
+`security` entra no `nunca-labels:` e não no `so-labels:` por um motivo distinto:
+issue de segurança em repo público não é trabalho para uma sessão sozinha de
+madrugada, mesmo quando também está marcada como `bug`.
 
 `enhancement`, `tech-debt` e `documentation` mudam o rumo do projeto ou o que ele
 promete, e isso é conversa de equipe, não trabalho de uma sessão sozinha. Um
