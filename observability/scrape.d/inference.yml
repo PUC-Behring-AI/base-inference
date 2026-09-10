@@ -1,0 +1,39 @@
+# What this layer asks to be scraped (C4).
+#
+# The metrics backend lives in base-platform and scrapes nothing of its own.
+# The layer that emits a metric is the layer that says where to find it, which
+# is why this file is here and not there. base-platform mounts it into
+# /etc/prometheus/scrape.d/ and reads it through `scrape_config_files`.
+#
+# NO PAYLOAD REACHES THESE TARGETS AS A METRIC. Counters, latencies and
+# histograms only. A prompt or a completion is provenance, it is classified
+# data, and it goes to the knowledge layer under C6 — never here, where anyone
+# with operations access can read it.
+
+- job_name: ray-serve
+  static_configs:
+    - targets:
+        - "ray-head:8080"
+      labels:
+        layer: inference
+        component: ray-serve
+
+# vLLM's own metrics arrive through the Ray Serve endpoint above, via Ray's
+# built-in Prometheus integration. There is no separate target, and adding one
+# would scrape the same series twice.
+
+- job_name: litellm
+  static_configs:
+    - targets:
+        - "litellm:4000"
+      labels:
+        layer: inference
+        component: gateway
+
+- job_name: dcgm
+  static_configs:
+    - targets:
+        - "dcgm-exporter:9400"
+      labels:
+        layer: inference
+        component: gpu

@@ -148,9 +148,19 @@ class TestPortSurface:
     def test_postgres_is_not_published(self, compose: dict) -> None:
         assert not compose["services"]["postgres"].get("ports")
 
-    def test_grafana_stays_on_loopback(self, compose: dict) -> None:
-        for spec in compose["services"]["grafana"]["ports"]:
-            assert str(spec).startswith("127.0.0.1"), "Grafana must not be network-reachable"
+    def test_no_metrics_backend_runs_here(self, compose: dict) -> None:
+        """The backend belongs to the platform layer (C4), not to this one.
+
+        Grafana used to run here on 127.0.0.1:3000 and Prometheus beside it.
+        Both moved. This assertion is what stops them coming back the next
+        time someone wants a graph without leaving the repository.
+        """
+        backends = {"prometheus", "grafana", "langfuse"}
+        present = backends & set(compose["services"])
+        assert not present, (
+            f"{sorted(present)} runs here, and the metrics backend belongs to "
+            "base-platform. Publish targets in observability/scrape.d/ instead."
+        )
 
 
 # ── HuggingFace cache path ──────────────────────────────────────────────

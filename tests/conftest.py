@@ -38,6 +38,9 @@ def config_files(repo_root: Path) -> dict[str, Path]:
         "dockerfile_ray": repo_root / "Dockerfile.ray",
         "serve_config": repo_root / "serve_config.yaml",
         "docker_compose": repo_root / "docker-compose.yml",
-        "prometheus": repo_root / "prometheus.yml",
+        # What this layer asks the platform layer's backend to scrape. The
+        # backend itself is not here; `prometheus.yml` used to be, and moved
+        # to base-platform with the server that reads it.
+        "scrape": repo_root / "observability" / "scrape.d" / "inference.yml",
         "env_example": repo_root / ".env.example",
     }

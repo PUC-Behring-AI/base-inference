@@ -130,7 +130,11 @@ python3 - <<'PY' || exit 1
 import sys
 import yaml
 
-for path in ("docker-compose.yml", "serve_config.yaml", "prometheus.yml"):
+for path in (
+    "docker-compose.yml",
+    "serve_config.yaml",
+    "observability/scrape.d/inference.yml",
+):
     try:
         with open(path, encoding="utf-8") as fh:
             yaml.safe_load(fh)
