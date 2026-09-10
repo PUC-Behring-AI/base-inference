@@ -1,19 +1,21 @@
-# AGENTS.md — IDIA Server
-# Regras do projeto para qualquer agente que trabalhe neste repositório.
-# Lido por Claude Code, OpenCode e afins; não depende de nenhum deles.
-# Version: 2.0
-# Last updated: 2026-09-03
+# AGENTS.md — base-inference
+# Segue AGENTS-base.md v1.0, em PUC-Behring-AI/base-platform/docs/AGENTS-base.md.
+# Aquele arquivo carrega os axiomas comuns aos dez repositórios; este carrega o
+# que é só desta camada. Em conflito, este vence.
+# Version: 3.0
+# Last updated: 2026-09-10
 
 ## Project
 
-**Name:** IDIA Server (Inference & Deployment for Intelligent Agents)
+**Name:** base-inference — a camada de inferência da base
+**Layer:** `inference` · **Role:** base · **Grupo:** 2
 **Description:** Servidor de inferência LLM auto-hospedado, com autoscaling de
   réplicas (incluindo scale-to-zero), provisionamento de usuários com budget e
   rate-limit individuais, e interface web. Deploy local via Docker Compose.
 **Stack:** Python 3.11+, Docker Compose v2, Ray Serve LLM (2.56.0),
   vLLM (0.22.0, bundled by ray[serve,llm]==2.56.0), LiteLLM (1.85.0), Prometheus, Grafana
 **Testing:** pytest 8.x, PyYAML (config schema validation)
-**Repository:** https://github.com/PUC-Behring-AI/idia-server
+**Repository:** https://github.com/PUC-Behring-AI/base-inference
 
 ## Architecture (3-Tier)
 
@@ -35,7 +37,7 @@ cada artefato. `tests/test_docs.py::TestDirectoryTree` falha se um nome listado
 aqui não existir em disco.
 
 ```
-idia-server/
+base-inference/
 ├── idia                        ← CLI unificada: deploy, status, user, colleague, service
 ├── AGENTS.md                   ← este arquivo — regras do projeto para agentes
 ├── README.md                   ← porta de entrada; operação vive no docs/DEPLOY.md
@@ -109,232 +111,6 @@ de como o projeto chegou aqui, e o detalhe vive no histórico estrutural do
 O trabalho agora é dirigido por issues, não por fases. `gh issue list` é o
 plano.
 
-## Document Evolution Contract
-
-### ARCHITECTURE.md — Living Document Rules
-
-O documento de arquitetura evolui com o código. Estas regras previnem desync:
-
-**SYNC-REQUIRED Triggers** — qualquer alteração em:
-- `Dockerfile.ray` — imagem base, dependências, entrypoint
-- `serve_config.yaml` — modelos, autoscaling, engine_kwargs
-- `docker-compose.yml` — serviços, portas, networks, volumes, GPU config
-- `scripts/render_config.py` — `_render_litellm_config()`, que é onde o roteamento do LiteLLM realmente mora (§4.3)
-- `prometheus.yml` — scrape targets, alert rules
-- Qualquer arquivo em `tests/` que introduza nova categoria de teste (#)
-- Port mappings, topologia de rede, perímetros de segurança
-- Estratégia de carregamento de modelos ou GPU placement
-
-**Minor Update** — version bump, ajuste de parâmetro, nova env var:
-- Editar apenas a seção afetada.
-- Sem revisão completa do documento.
-- Atualizar footer com data e seções alteradas.
-
-**Major Update** — nova camada, novo target de deploy, mudança de pattern:
-- Revisão completa do documento.
-- Seções antigas marcadas com `[DEPRECATED — see section X]`.
-- Requer aprovação humana antes do merge.
-
-**Desync Prevention:**
-- Se código e ARCHITECTURE.md discordam: o código é a verdade, mas o doc deve ser atualizado no mesmo PR/commit.
-- Toda task de implementação que afeta a arquitetura declara: `[UPDATES ARCHITECTURE.md — section X]` no plano.
-- Nunca mergear código sem a atualização correspondente do architecture doc.
-
-**Version Footer:**
-```markdown
----
-*Document version: 1.1 | Last updated: 2026-06-28 | Sections changed: [list]*
-```
-
-### AGENTS.md — Update Rules
-
-- Atualizado quando uma nova Fase é planejada (novos stacks, ferramentas, workflows).
-- Atualizado quando versões de componentes mudam materialmente.
-- Atualizado quando novas constraints são descobertas durante o desenvolvimento.
-- Atualizado quando o diretório ou a suíte de testes muda significativamente.
-- A seção **Testing Strategy** abaixo deve refletir exatamente os testes implementados em `tests/`.
-
----
-
-## Anti-Drift Rule (AXIOM — NON-OVERRIDABLE)
-
-Toda tarefa de implementação que cria, modifica ou remove um artefato de
-infraestrutura (Dockerfile, config YAML, Compose, entrypoint, script de
-deploy, pipeline de CI/CD, teste de integração ou segurança) DEVE:
-
-1. Declarar no plano: `[UPDATES ARCHITECTURE.md — section X]`
-2. Atualizar a seção correspondente no architecture doc no mesmo commit
-3. Atualizar o footer de versão do architecture doc
-4. Adicionar entrada na Structural Change History
-
-**Violação:** se um artefato for mergeado sem a atualização correspondente da
-arquitetura, o commit é considerado incompleto. A correção deve ser feita
-antes de qualquer outro trabalho.
-
-Esta regra está em vigor desde a Fase 2 e se aplica a todas as fases
-subsequentes.
-
----
-
-## Governance & Maintainability Axioms (AXIOM — NON-OVERRIDABLE)
-
-Estas regras existem porque a rastreabilidade de decisões e a facilidade de
-manutenção são prioridades do projeto. Um novo membro da equipe ou um
-agente OpenCode deve conseguir entender qualquer parte do sistema usando
-apenas a documentação e os commits — sem entrevistar o autor original.
-
-### 0. Decision Closure Rule — Planos só existem com decisões fechadas
-
-Nenhum plano de implementação é considerado completo enquanto houver
-decisões de projeto pendentes. O autor do plano deve:
-
-1. Identificar todas as questões em aberto durante a análise do problema.
-2. Documentar cada questão explicitamente no plano.
-3. **Fechar cada decisão** antes de concluir o plano, usando:
-   - Melhores práticas da área quando o usuário não tiver preferência.
-   - A recomendação fundamentada do autor quando o usuário delegar.
-   - Investigação adicional (skills, pesquisa, código existente) quando
-     necessário — nunca palpites não verificados.
-4. Registrar a decisão e sua justificativa no plano ou na documentação.
-
-**Violação:** um plano apresentado com questões em aberto não aprovadas
-não autoriza implementação. A implementação deve parar até que todas as
-decisões estejam fechadas.
-
-**Exemplo:** se o plano levanta "qual instância EC2 usar?" sem responder,
-o plano está incompleto. O autor deve pesquisar, recomendar e documentar
-a escolha (ex.: g5.xlarge por 1× A10G 24GB — adequado para modelos 7-8B).
-
-### 1. Architecture Feedback Loop — Toda descoberta de implementação realimenta a arquitetura
-
-A implementação inevitavelmente revela detalhes não antecipados na
-arquitetura original. Quando isso acontece:
-
-1. A descoberta é registrada.
-2. A arquitetura (`ARCHITECTURE.md`) é atualizada para refletir o
-   entendimento corrigido.
-3. A implementação prossegue sobre a arquitetura atualizada — nunca
-   sobre a versão desatualizada.
-
-**Ciclo:** `Arquitetura → Implementação → Descoberta → Atualização da
-Arquitetura → Continuação da Implementação`
-
-**Isso se aplica a:**
-- Parâmetros que se revelam diferentes do esperado.
-- Workflows que exigem passos adicionais não documentados.
-- Dependências ou versões que se provam incompatíveis.
-- Qualquer diferença entre o comportamento real e o especificado.
-
-**Registro:** cada iteração do ciclo deve ser rastreável via commit ou
-entrada na Structural Change History do `ARCHITECTURE.md`.
-
-### 2. Traceability Axiom — Todo commit deve ser compreensível por um novo membro 6 meses depois
-
-Um commit não é apenas "o que mudou" — é **por que mudou**, qual decisão
-foi tomada, e qual alternativa foi descartada.
-
-| Critério | Obrigatório? | Exemplo (bom) | Exemplo (ruim) |
-|----------|-------------|---------------|----------------|
-| **Por que** esta mudança existe? | ✅ | "serve_config.yaml: pre-render workflow porque config tem placeholders ${VAR} desde a Fase 2" | "serve_config.yaml: update config" |
-| **Qual decisão** foi tomada? | ✅ | "Dockerfile.ray: usar imagem rayproject/ray:2.56.0-py311-gpu — bundla vLLM 0.22.0 via ray[serve,llm]" | "Dockerfile: update image" |
-| **Qual alternativa** foi descartada? | ✅ | "Opção A (instalar vllm separado) descartada porque quebra o pinning de versão do ray[serve,llm]" | "Dockerfile: fix deps" |
-| **O que** mudou (diff)? | ✅ (implícito no git) | — | — |
-
-**Na prática:** a mensagem do commit deve conter, em linguagem natural,
-as respostas para "por que", "qual decisão" e "qual alternativa".
-
-**Documentação derivada:** quando uma decisão de implementação modifica
-a arquitetura, o `ARCHITECTURE.md` deve ser atualizado no mesmo commit,
-e a entrada na Structural Change History deve referenciar o commit.
-
-### 3. Maintainability Over Novelty — Preferir o conhecido sobre o novo
-
-Quando múltiplas abordagens técnicas resolvem o mesmo problema:
-
-1. Preferir a abordagem mais documentada, mais testada e mais conhecida
-   pela equipe.
-2. Abordagens experimentais ou de vanguarda exigem justificativa
-   explícita de por que a abordagem estabelecida não atende.
-3. "Porque é mais novo/mais rápido/melhor" não é justificativa suficiente
-   sem evidência mensurável para o caso de uso específico.
-4. Se uma abordagem nova é escolhida, documentar explicitamente o que
-   se espera ganhar e qual o plano de fallback.
-
-**Exceção:** quando o problema ativo não pode ser resolvido por
-abordagens estabelecidas — nesse caso, documentar por que.
-
----
-
-## Code Quality Axioms (AXIOM — NON-OVERRIDABLE)
-
-Estas regras existem porque a auditoria de 2026-06-28 revelou padrões
-de falha recorrentes: validação de entrada ausente, dependências não
-declaradas, I/O sem diagnóstico, e cobertura de testes insuficiente
-para casos de erro. Elas se aplicam a todo código e toda fase.
-
-### 4. Input Validation Rule — Toda env var com tipo restrito deve ser validada
-
-Toda variável de ambiente com tipo numérico (int, float) ou range deve
-ser validada antes do uso. A validação deve:
-- Rejeitar valores que não podem ser convertidos para o tipo esperado.
-- Rejeitar valores fora do range documentado.
-- Emitir mensagem clara com o valor recebido e o range esperado.
-- Usar `sys.exit(1)` para falhas de validação no entrypoint.
-
-**Aplica-se a:** `GPU_MEMORY_UTILIZATION` (range 0-1), `MAX_MODEL_LEN`
-(inteiro positivo).
-
-### 5. Dependency Declaration Rule — Todo import Python deve ter entry em pyproject.toml
-
-Nenhuma dependência pode ser importada sem estar declarada em
-`[project.dependencies]` no `pyproject.toml`, com version bounds
-explícitos (`>=` para mínimo, `<` para máximo).
-
-**Veda:** confiar em dependências transitivas (ex: Ray inclui PyYAML).
-Se o código faz `import yaml`, `pyyaml` deve estar em `pyproject.toml`.
-
-### 6. Error Handling Rule — Toda operação de I/O deve ter diagnóstico explícito
-
-Toda operação de arquivo, rede, ou subprocesso deve ser envolvida em
-`try/except` com mensagens que:
-- Identifiquem o arquivo/recurso específico que falhou.
-- Expliquem a causa provável (permissão, encoding, não encontrado).
-- Sugiram uma ação corretiva para o operador.
-
-**Exceção:** operações em funções puras de teste (que não fazem I/O).
-
-### 7. Test Coverage Rule — Caminhos de erro devem ser testados
-
-Para toda função com validação de entrada, os casos de erro devem ser
-testados ao lado dos caminhos felizes. A cobertura mínima inclui:
-- Valores fora do range esperado.
-- Valores com tipo incorreto.
-- Caracteres especiais que podem subverter o formato de saída.
-- Arquivos ausentes ou inacessíveis.
-
-### 8. Secret Hygiene Rule — Env vars com valores reais nunca são logadas
-
-Nenhuma variável de ambiente com valor real deve ser impressa em
-stdout/stderr, exceto em modo `--debug` ou `--dry-run` explicitamente
-ativado. Identificadores não-sensíveis (MODEL_ID, nomes de modelo)
-podem ser logados. Senhas, tokens, chaves de API nunca devem ser
-logados — nem mesmo de forma ofuscada.
-
-### 9. Severity Calibration Rule — Mitigações existentes devem ser avaliadas antes da severidade
-
-Ao classificar a severidade de uma vulnerabilidade:
-1. Mapear a superfície de ataque real (quem pode explorar? por qual vetor?).
-2. Identificar mitigações existentes (firewall, binding local, rede interna).
-3. Atribuir severidade APÓS avaliar mitigações — não antes.
-
-**Guia:**
-- CRÍTICO: exploração remota sem autenticação, sem mitigações.
-- ALTO: exploração remota com mitigações parciais.
-- MÉDIO: exploração que requer acesso prévio (rede interna, SSH, física).
-- BAIXO: melhoria defensiva sem risco imediato.
-
----
-
 ## Security Constraints (from ARCHITECTURE 
 
 Derivadas da arquitetura. **Não negociáveis.**
@@ -351,23 +127,6 @@ Derivadas da arquitetura. **Não negociáveis.**
 | Ray cluster tratado como banco sem autorização — qualquer path de rede = root | §9.2 |
 | Dashboard bound a `127.0.0.1`, nunca `0.0.0.0` | §9.2 |
 | Ray ≥ 2.54.0 obrigatório (fecha CVE-2026-27482) | §9.2 |
-
-## Container Image Policy
-
-- **`Dockerfile.ray`**: `FROM rayproject/ray:2.56.0-py311-gpu@sha256:9e0af0a2820745fc567bfb3777f7fd38107a9ce72635c5861e473c24ea4dd150`, pinado.
-  `RUN pip install "ray[serve,llm]==2.56.0"` — sem vllm separado (bundled como 0.22.0).
-- **LiteLLM**: `docker.litellm.ai/berriai/litellm:v1.85.0`, pinado.
-- **Prometheus**: `prom/prometheus`, pinado a semver tag específica.
-- **Grafana**: `grafana/grafana`, pinado a semver tag específica.
-- Nenhuma imagem usa `:latest`.
-
-## Env Var Convention
-
-- Secrets em `.env` (nunca commitado).
-- `.env.example` é o template documentado (commitado).
-- Todas as env vars seguem `UPPER_SNAKE_CASE`.
-- Obrigatórias: `HF_TOKEN`, `LITELLM_MASTER_KEY`, `MODEL_ID`, `MODEL_SOURCE`.
-- Opcionais (com defaults documentados): `MAX_MODEL_LEN`, `GPU_MEMORY_UTILIZATION`.
 
 ## Model Configuration
 
@@ -638,28 +397,6 @@ Isso permite que a suíte rode limpa desde a Fase 1.
 
 ---
 
-## O portão local
-
-`./scripts/gate.sh` roda antes de abrir qualquer PR: `pytest` com piso de 95%
-de cobertura (statement e ramo), `bash -n` e `shellcheck` em todo shell,
-`ruff` no Python mantido, e parse dos YAML de configuração. Ele grava o
-marcador que o `git-guard` confere — sem isso o hook recusa o PR que o gate
-acabou de aprovar.
-
-A etapa de cobertura **falha** se o `pytest-cov` não estiver instalado, em vez
-de pular como o `shellcheck` e o `ruff` fazem. Pular um piso é aprovar um PR
-sem ter medido nada, e o gate imprimiria verde sobre isso.
-
-O caminho está em `.claude/portao`, que pertence ao repositório e não à
-máquina. `.claude/issue-vizinhas` exige a seção `### Vizinhas` no corpo de
-toda issue nova: uma issue que nunca pergunta com quem colide é indistinguível
-de uma que perguntou e não achou nada, e só uma das duas é honesta.
-
-## Git Conventions
-
-Segue `~/.config/opencode/AGENTS.md §8` (Conventional Commits).
-Commits incluem referência `[phase-N]` quando sob plano ativo.
-
 ## Stack-Specific Rules
 
 - **Docker Compose v2** obrigatório (`docker compose`, não `docker-compose`).
@@ -667,3 +404,33 @@ Commits incluem referência `[phase-N]` quando sob plano ativo.
 - Toda imagem pinada por tag semver — `:latest` proibido.
 - Secrets via `.env` + variáveis de ambiente, nunca hardcoded.
 - Configs YAML seguem schemas validados por `tests/test_config_schemas.py`.
+
+---
+
+## O que saiu daqui para a base
+
+Oito seções deste arquivo migraram para
+`PUC-Behring-AI/base-platform/docs/AGENTS-base.md` em 10/09/2026. Elas valem em
+qualquer repositório da base, e dez cópias delas divergiriam na primeira semana
+— é o defeito do `serve_config.yaml` duplicado (ARCHITECTURE §5.3) multiplicado
+por dez.
+
+Se você veio procurar uma delas aqui, está lá:
+
+| Seção | Onde está agora |
+|---|---|
+| Document Evolution Contract | `AGENTS-base.md` |
+| Anti-Drift Rule | `AGENTS-base.md` |
+| Governance & Maintainability Axioms (0–3) | `AGENTS-base.md` |
+| Code Quality Axioms (4–9) | `AGENTS-base.md` |
+| Container Image Policy | `AGENTS-base.md` |
+| Env Var Convention | `AGENTS-base.md` |
+| O portão local | `AGENTS-base.md` |
+| Git Conventions | `AGENTS-base.md` |
+
+O que ficou aqui é o que é só desta camada: a topologia de três tiers, a árvore
+de diretórios, as restrições de segurança derivadas do `ARCHITECTURE.md` deste
+repositório, a configuração de modelo, o que cada arquivo de teste cobre, e as
+regras de stack acima.
+
+**Em conflito, este arquivo vence** — quem o escreveu conhece este repositório.

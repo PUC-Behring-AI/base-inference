@@ -17,8 +17,16 @@ set -euo pipefail
 
 SCRIPTS_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_DIR="$(cd "$SCRIPTS_DIR/.." && pwd)"
-UNIT_NAME="idia-server"
+UNIT_NAME="base-inference"
 UNIT_FILE="/etc/systemd/system/${UNIT_NAME}.service"
+
+# Until 2026-09-10 this unit was called idia-server.service. A host provisioned
+# before that keeps the old unit, and installing the new one beside it leaves
+# two units bringing up the same stack — the older one silently winning on the
+# next boot. Renaming the variable above is not enough; the old unit has to be
+# taken off the host.
+LEGACY_UNIT_NAME="idia-server"
+LEGACY_UNIT_FILE="/etc/systemd/system/${LEGACY_UNIT_NAME}.service"
 
 # ── Colours ──────────────────────────────────────────────────────────────────
 
@@ -45,6 +53,16 @@ if [ ! -f "$REPO_DIR/docker-compose.yml" ]; then
     exit 1
 fi
 
+# ── Migrate away from the pre-rename unit ────────────────────────────────────
+
+if [ -f "$LEGACY_UNIT_FILE" ]; then
+    _warn "found the pre-rename unit ${LEGACY_UNIT_NAME}.service — removing it"
+    systemctl disable --now "${LEGACY_UNIT_NAME}.service" 2>/dev/null || true
+    rm -f "$LEGACY_UNIT_FILE"
+    systemctl daemon-reload
+    _info "${LEGACY_UNIT_NAME}.service removed; ${UNIT_NAME}.service replaces it"
+fi
+
 # ── Generate unit file ───────────────────────────────────────────────────────
 
 cat > "$UNIT_FILE" << UNITEOF
@@ -53,7 +71,7 @@ cat > "$UNIT_FILE" << UNITEOF
 
 [Unit]
 Description=IDIA Server — LLM Inference Stack
-Documentation=https://github.com/PUC-Behring-Institute-for-AI/idia-server
+Documentation=https://github.com/PUC-Behring-AI/base-inference
 Wants=docker.service
 After=docker.service network-online.target
 RequiresMountsFor=/var/lib/docker

@@ -449,6 +449,11 @@ repositório foi clonado. Clonar em `~/idia` em vez de `~/idia-server`
 quebrava a conexão com o LiteLLM, e a mensagem de erro não dizia nada sobre
 nomes de diretório.
 
+> *O nome `idia-server` acima é histórico e fica como está: o repositório foi
+> renomeado para `base-inference` em 10/09/2026, mas o defeito descrito
+> aconteceu antes disso, e o nome da rede à época derivava daquele diretório.
+> Reescrevê-lo tornaria o registro falso.*
+
 **Decisão:** serviço `open-webui` no `docker-compose.yml`, com
 `container_name` fixo (`idia-webui` por padrão), `depends_on: litellm` com
 `condition: service_healthy`, healthcheck, limite de memória, `restart:

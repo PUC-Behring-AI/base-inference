@@ -419,8 +419,8 @@ _service_uninstall() {
 }
 
 _service_status() {
-    if command -v systemctl &>/dev/null && systemctl is-enabled --quiet idia-server 2>/dev/null; then
-        systemctl status idia-server --no-pager 2>/dev/null || true
+    if command -v systemctl &>/dev/null && systemctl is-enabled --quiet base-inference 2>/dev/null; then
+        systemctl status base-inference --no-pager 2>/dev/null || true
     else
         _banner "Status"
         _load_env
