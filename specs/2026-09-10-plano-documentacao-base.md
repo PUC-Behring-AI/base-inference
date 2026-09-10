@@ -49,6 +49,50 @@ o custo é reescrever em vez de escrever.
 
 ---
 
+## Como cada mudança entra — vale para TODA tarefa deste plano
+
+**Nenhum `git push` na branch padrão. Nunca. Em nenhuma tarefa.**
+
+Isto foi aprendido caro em 2026-09-10, na primeira execução deste plano. As
+Tarefas 2 e 3 diziam `git push -u origin main`; o `git-guard` recusou, e as duas
+sessões usaram a válvula de escape (`git config claude.guard.allowDefaultPush
+true`) em vez de parar. Os dois repositórios foram apagados e refeitos.
+
+**Se um guard recusar um comando, pare e reporte.** A válvula de escape existe
+para o humano, não para a sessão. A resposta certa é sempre o que o guard está
+pedindo.
+
+### Criação de repositório
+
+```bash
+gh repo create PUC-Behring-AI/<REPO> <--private|--public> --add-readme \
+  --description "<DESCRIPTION>"
+```
+
+`--add-readme` faz o **GitHub** criar o commit inicial. Sem ele o repositório
+nasce sem branch nenhuma, e aí o primeiro commit **não pode** passar por PR: o
+GitHub recusa `gh pr create` com `Base ref must be a branch`. Esse deadlock é a
+razão da flag. Ela custa um commit descartável e um README auto-gerado, que o
+primeiro PR substitui.
+
+### Toda mudança de conteúdo
+
+```bash
+git checkout -b <BRANCH>
+# escreva os arquivos
+git add -A
+git commit -m "<MENSAGEM>"
+git push -u origin <BRANCH>
+gh pr create --title "<TÍTULO>" --body "<CORPO>"
+gh pr merge --auto --rebase
+```
+
+Nenhum destes repositórios tem CI, então o auto-merge entra na hora. Isso é
+deliberado e fica dito aqui em vez de descoberto: a verificação é o passo de
+verificação da própria tarefa, não uma esteira que não existe.
+
+---
+
 ## O que este plano NÃO faz
 
 Escrito porque a fronteira foi pedida explicitamente e é fácil de atravessar sem
@@ -176,12 +220,17 @@ organização. É a única exceção à regra "tudo privado", e ela é deliberad
 perfil não contém nada além de nomes de repositório e descrições de uma linha.
 
 ```bash
-gh repo create PUC-Behring-AI/.github --public \
+gh repo create PUC-Behring-AI/.github --public --add-readme \
   --description "Organisation profile and shared configuration"
 git clone git@github.com:PUC-Behring-AI/.github.git ~/Documents/Github/puc-behring-github
 cd ~/Documents/Github/puc-behring-github
+git checkout -b docs/profile
 mkdir -p profile
 ```
+
+O `--add-readme` cria um `README.md` na raiz que **não** faz parte da
+especificação deste repositório. Remova-o neste mesmo branch:
+`git rm README.md`.
 
 - [ ] **Passo 3: Escrever `profile/README.md`**
 
@@ -226,15 +275,23 @@ or outside it. They carry neither the `layer` nor the `role` property.
 
 - [ ] **Passo 4: Commitar e verificar**
 
+Siga **Como cada mudança entra**, com:
+
+- branch: `docs/profile`
+- commit: `docs: add organisation profile with the base platform index`
+- título do PR: `docs: organisation profile with the base platform index`
+
+Depois do merge, confirme o caminho e a branch padrão:
+
 ```bash
-git add profile/README.md
-git commit -m "docs: add organisation profile with the base platform index"
-git push
+gh api repos/PUC-Behring-AI/.github/contents/profile/README.md --jq .path
+gh api repos/PUC-Behring-AI/.github --jq .default_branch
 ```
 
-Abra `https://github.com/PUC-Behring-AI` e confirme que o texto aparece na
-página. Se não aparecer, o caminho está errado: tem de ser exatamente
-`profile/README.md`, não `README.md`.
+Esperado: `profile/README.md` e `main`. Abra
+`https://github.com/PUC-Behring-AI` e confirme que o texto aparece na página. Se
+não aparecer, o caminho está errado: tem de ser exatamente `profile/README.md`,
+não `README.md`.
 
 ---
 
@@ -248,11 +305,15 @@ página. Se não aparecer, o caminho está errado: tem de ser exatamente
 - [ ] **Passo 1: Criar o repositório, privado**
 
 ```bash
-gh repo create PUC-Behring-AI/base-platform --private \
+gh repo create PUC-Behring-AI/base-platform --private --add-readme \
   --description "Inter-layer contracts, shared gate and release train for the base"
 git clone git@github.com:PUC-Behring-AI/base-platform.git ~/Documents/Github/base-platform
 cd ~/Documents/Github/base-platform
+git checkout -b docs/index
 ```
+
+O `README.md` que o `--add-readme` criou é substituído pelo do Passo 2, no mesmo
+branch.
 
 - [ ] **Passo 2: Escrever `README.md`**
 
@@ -310,11 +371,11 @@ yet — they are stages E1 and E2 of the spec.
 
 - [ ] **Passo 3: Commitar**
 
-```bash
-git add README.md
-git commit -m "docs: add base-platform index with the prefix map"
-git push
-```
+Siga **Como cada mudança entra**, com:
+
+- branch: `docs/index`
+- commit: `docs: add base-platform index with the prefix map`
+- título do PR: `docs: base-platform index with the prefix map`
 
 ---
 
@@ -413,11 +474,11 @@ this document diverges from it, the spec wins.
 
 - [ ] **Passo 2: Commitar**
 
-```bash
-git add docs/ARCHITECTURE.md
-git commit -m "docs: add the five-layer architecture reference"
-git push
-```
+Siga **Como cada mudança entra**, com:
+
+- branch: `docs/architecture`
+- commit: `docs: add the five-layer architecture reference`
+- título do PR: `docs: the five-layer architecture reference`
 
 ---
 
@@ -499,11 +560,11 @@ it is normative.
 
 - [ ] **Passo 2: Commitar**
 
-```bash
-git add docs/CONTRACTS.md
-git commit -m "docs: add the four inter-layer contracts"
-git push
-```
+Siga **Como cada mudança entra**, com:
+
+- branch: `docs/contracts`
+- commit: `docs: add the four inter-layer contracts`
+- título do PR: `docs: the four inter-layer contracts`
 
 ---
 
@@ -590,11 +651,11 @@ cadence like any other.
 
 - [ ] **Passo 2: Commitar**
 
-```bash
-git add docs/ADAPTATION.md
-git commit -m "docs: add the instance adaptation process"
-git push
-```
+Siga **Como cada mudança entra**, com:
+
+- branch: `docs/adaptation`
+- commit: `docs: add the instance adaptation process`
+- título do PR: `docs: the instance adaptation process`
 
 ---
 
@@ -676,11 +737,11 @@ evolução de documento). Se vier menos, uma seção ficou para trás.
 
 - [ ] **Passo 5: Commitar**
 
-```bash
-git add docs/AGENTS-base.md
-git commit -m "docs: extract the shared half of AGENTS.md into a versioned base"
-git push
-```
+Siga **Como cada mudança entra**, com:
+
+- branch: `docs/agents-base`
+- commit: `docs: extract the shared half of AGENTS.md into a versioned base`
+- título do PR: `docs: the shared half of AGENTS.md, versioned`
 
 ---
 
@@ -742,11 +803,11 @@ A spec passa a morar aqui porque governa dez repositórios, não um. A cópia em
 
 - [ ] **Passo 4: Commitar**
 
-```bash
-git add CODEOWNERS .claude/issue-vizinhas specs/
-git commit -m "docs: add CODEOWNERS skeleton, issue guard opt-in and the governing spec"
-git push
-```
+Siga **Como cada mudança entra**, com:
+
+- branch: `docs/governance`
+- commit: `docs: add CODEOWNERS skeleton, issue guard opt-in and the governing spec`
+- título do PR: `docs: CODEOWNERS skeleton, issue guard opt-in and the governing spec`
 
 - [ ] **Passo 5: Aplicar as propriedades**
 
@@ -861,16 +922,28 @@ Esperado: `private`.
 
 - [ ] **Passo 4: Commitar as duas coisas juntas**
 
+Este repositório **tem** `.claude/portao`, então o G6 exige o portão antes do
+`gh pr create`:
+
 ```bash
-git add .claude/noturno
-git commit -m "chore(noturno): the repo went private, so restate why the scope is narrow
+./scripts/gate.sh
+```
+
+Depois siga **Como cada mudança entra**, com:
+
+- branch: `chore/noturno-privado`
+- commit:
+
+```
+chore(noturno): the repo went private, so restate why the scope is narrow
 
 The file justified every restriction with 'this repo is PUBLIC', verified on
 09/09. That premise died today. The bigger reason did not: this repo is now one
 of ten, one of which carries a client's confidential methodology. The
-cross-contamination rule hardens rather than relaxes."
-git push
+cross-contamination rule hardens rather than relaxes.
 ```
+
+- título do PR: `chore(noturno): restate why the night scope is narrow now the repo is private`
 
 - [ ] **Passo 5: Verificar que a noite ainda não aponta para cá**
 
@@ -970,15 +1043,20 @@ mudou e por quê.
 
 - [ ] **Passo 8: Commitar**
 
-```bash
-git add -A
-git commit -m "refactor: rename idia-server to base-inference across the repo
+Siga **Como cada mudança entra**, com:
+
+- branch: `refactor/rename-to-base-inference`
+- commit:
+
+```
+refactor: rename idia-server to base-inference across the repo
 
 Includes a systemd unit migration step: a host provisioned before today has
 idia-server.service installed, and it would keep running the old stack next to
-the new unit."
-git push
+the new unit.
 ```
+
+- título do PR: `refactor: rename idia-server to base-inference`
 
 ---
 
@@ -993,26 +1071,37 @@ valores que substitui, e nenhuma tarefa depende de você ter lido outra.
 Substitua `<REPO>`, `<DESCRIPTION>`, `<LAYER>` e `<ROLE>` pelos valores da tarefa.
 
 ```bash
-# 1. create and clone
-gh repo create PUC-Behring-AI/<REPO> --private --description "<DESCRIPTION>"
+# 1. create with an initial commit, clone, branch
+gh repo create PUC-Behring-AI/<REPO> --private --add-readme \
+  --description "<DESCRIPTION>"
 git clone git@github.com:PUC-Behring-AI/<REPO>.git ~/Documents/Github/<REPO>
 cd ~/Documents/Github/<REPO>
+git checkout -b docs/bootstrap
 
-# 2. README.md   — use the "README template" below with this task's values
+# 2. README.md   — overwrite the auto-generated one, using the "README template"
+#                  below with this task's values
 # 3. AGENTS.md   — use the "AGENTS.md template" below
 
 # 4. issue guard opt-in
 mkdir -p .claude && printf '### Vizinhas\n' > .claude/issue-vizinhas
 
-# 5. organisation properties
-gh api --method PATCH repos/PUC-Behring-AI/<REPO>/properties/values --input - <<JSON
+# 5. organisation properties.
+#    Write the JSON to /tmp, never inside a repository: an inline heredoc is
+#    refused by the worktree guard as unverifiable.
+cat > /tmp/props-<REPO>.json <<JSON
 {"properties":[{"property_name":"layer","value":"<LAYER>"},{"property_name":"role","value":"<ROLE>"}]}
 JSON
+gh api --method PATCH repos/PUC-Behring-AI/<REPO>/properties/values \
+  --input /tmp/props-<REPO>.json
+rm -f /tmp/props-<REPO>.json
 
-# 6. commit
+# 6. in through a pull request — see "Como cada mudança entra"
 git add -A
 git commit -m "docs: bootstrap <REPO> with its boundary and contracts"
-git push
+git push -u origin docs/bootstrap
+gh pr create --title "docs: bootstrap <REPO>" \
+  --body "README, AGENTS.md addendum and issue guard opt-in. Documentation only."
+gh pr merge --auto --rebase
 ```
 
 Ao final de cada tarefa, confirme que nada além de documentação entrou:
