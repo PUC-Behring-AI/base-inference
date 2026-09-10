@@ -67,8 +67,10 @@ base-inference/
 ├── pyproject.toml              ← pytest, ruff
 ├── Dockerfile.ray              ← imagem Ray Serve LLM + vLLM
 ├── serve_config.yaml           ← template do Ray Serve; as entradas são geradas
-├── docker-compose.yml          ← orquestração dos 7 serviços
-├── prometheus.yml              ← scrape config
+├── docker-compose.yml          ← o fragmento desta camada: 5 serviços
+├── observability/
+│   ├── scrape.d/inference.yml  ← alvos que esta camada pede que sejam varridos
+│   └── dashboards/vllm.json    ← dashboard do engine (ID 25043)
 ├── .claude/
 │   ├── portao                  ← comando do gate local, lido pelo git-guard
 │   └── issue-vizinhas          ← seção exigida no corpo de toda issue nova
@@ -80,11 +82,6 @@ base-inference/
 │   ├── setup_environment.sh    ← prepara a máquina (Linux)
 │   ├── install_service.sh      ← unit systemd
 │   └── uninstall_service.sh
-├── grafana/
-│   ├── datasources/datasource.yml   ← Prometheus provisionado
-│   └── dashboards/
-│       ├── dashboard.yml
-│       └── vllm-dashboard.json      ← dashboard oficial vLLM (ID 25043)
 ├── tests/
 │   ├── conftest.py             ← fixtures compartilhadas
 │   ├── test_docs.py            ← estrutura da documentação e da árvore
@@ -108,9 +105,13 @@ base-inference/
 └── docs/
     ├── ARCHITECTURE.md         ← documento vivo de arquitetura
     ├── DEPLOY.md               ← guia de operação
-    ├── ADR.md                  ← Architecture Decision Records
-    └── audit_logs/             ← relatórios de auditoria consumidos
+    └── ADR.md                  ← Architecture Decision Records
 ```
+
+Saíram daqui: `prometheus.yml` e `grafana/` foram para `base-platform` com o
+servidor que os lê (C4); `docs/audit_logs/` foi apagado — eram relatórios de
+junho cujos achados já viraram issues e fecharam, e um documento que sobrevive
+aos próprios achados virou decoração.
 
 ## Histórico de fases
 
@@ -172,7 +173,7 @@ cada uma com seu marcador e requisitos de infraestrutura.
 | Marcador | Categoria | O que valida | Requer infraestrutura? | Fase |
 |----------|-----------|-------------|----------------------|------|
 | `docs` | Documentação | Estrutura de arquivos obrigatórios, seções de documentos vivos, footer de versão | Não — roda com `pip install pytest` | 1 |
-| `config` | Schema de configuração | Estrutura YAML de `serve_config.yaml`, `docker-compose.yml`, `config.yaml`, `prometheus.yml`, `.env.example`; Grafana datasource provisioning | Não — apenas PyYAML | 1 |
+| `config` | Schema de configuração | Estrutura YAML de `serve_config.yaml`, `docker-compose.yml`, `.env.example` e `observability/scrape.d/inference.yml` | Não — apenas PyYAML | 1 |
 | `integration` | Integração | `render_config.py`: substituição de env vars, validação YAML, dry-run, caminhos de erro; consistência do Compose (build source, pinning, env vars) | Componente unitário: apenas pytest; full suite: Docker + GPU | 2 |
 | `security` | Segurança | Isolamento de portas (`:8000`, `:8265`, `:10001` inacessíveis externamente; apenas `:4000` externa; `:9090` não publicada; `:3000` bound a localhost), pin de imagens (`no :latest`), fronteiras de confiança (master_key declarado), binding do dashboard | Verificação de YAML: apenas pytest; verificação de rede: Docker | 2 |
 | (none) | Contrato LiteLLM | Simulação de API LiteLLM: rejeição de modelo inexistente, auth ausente, mensagens inválidas, formato de resposta | Não — puro Python com mock | 5 (Tier 4) |
@@ -315,8 +316,7 @@ Cada classe de teste valida a estrutura de um arquivo de configuração contra a
 | `TestServeConfig` | `serve_config.yaml` | `proxy_location: EveryNode`, `http_options.port: 8000`, `applications` é lista não-vazia |
 | `TestDockerCompose` | `docker-compose.yml` | Serviços `ray-head` e `litellm` presentes; `ipc: host` e `shm_size` em ray-head |
 | `TestLiteLLMConfig` | saída de `render_litellm_config()` | `model_list` não-vazia, rota para `ray-head:8000`, master_key como referência de env |
-| `TestPrometheusConfig` | `prometheus.yml` | `global` e `scrape_configs`; targets apontam para `ray-head:8080` e `litellm:4000`; scrape_interval=15s; sem rule_files (alertas no Grafana) |
-| `TestGrafanaDatasourceConfig` | `grafana/datasources/datasource.yml` | datasource Prometheus configurado como default; url=http://prometheus:9090; access=proxy |
+| `TestScrapeTargets` | `observability/scrape.d/inference.yml` | é uma **lista** de jobs, não um mapa com `scrape_configs`; cobre `ray-head:8080`, `litellm:4000` e `dcgm-exporter:9400`; todo job rotulado `layer: inference`; sem bloco `global`, que pertence ao backend |
 | `TestEnvExample` | `.env.example` | Declara `HF_TOKEN`, `LITELLM_MASTER_KEY`, `MODEL_ID`, `MODEL_SOURCE` |
 
 #### `test_integration.py` (— integration)
@@ -350,8 +350,8 @@ Cada classe de teste valida a estrutura de um arquivo de configuração contra a
 | `TestImagePinning.test_services_we_reach_into_are_pinned_by_digest` | Open WebUI pinado por `@sha256:` — nosso código depende do schema interno dele (ADR-009) |
 | `TestTrustBoundaries.test_generated_config_never_embeds_the_master_key` | o config renderizado nunca contém o valor real da master key |
 | `TestDashboardBinding.test_dashboard_host_set_to_localhost` | serve_config.yaml http_options.host=0.0.0.0 (proxy interno)
-| `TestMonitoringPortIsolation.test_prometheus_port_not_published` | Porta 9090 (Prometheus) não está em `ports:` no Compose
-| `TestMonitoringPortIsolation.test_grafana_port_bound_localhost` | Porta 3000 (Grafana) bound a 127.0.0.1
+| `TestMonitoringPortIsolation.test_no_backend_port_is_published` | Nenhuma porta de backend de métrica (9090, 3000) publicada — **nem em loopback**, porque "só no localhost" foi como o Grafana anterior se justificou
+| `TestMonitoringPortIsolation.test_no_backend_service_is_defined` | Nenhum `prometheus`, `grafana` ou `langfuse` definido aqui — backend alcançável só pela rede interna continua sendo backend
 
 #### `test_render_config_units.py` (sem marcador)
 

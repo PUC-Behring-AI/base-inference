@@ -277,45 +277,48 @@ class TestDashboardBinding:
 
 @pytest.mark.security
 class TestMonitoringPortIsolation:
-    """Monitoring ports follow the same isolation rules as core services (§9.3).
+    """This layer runs no metrics backend, so it publishes no metrics port.
 
-    Prometheus (9090) stays on the internal Compose network — never published.
-    Grafana (3000) is accessible only from localhost via 127.0.0.1 binding.
+    Prometheus on 9090 and Grafana on 127.0.0.1:3000 used to run here. Both
+    moved to the platform layer under C4, and the assertions moved with them —
+    what is checked here now is the absence, because the way this regresses is
+    someone adding a local Grafana for one graph and never taking it out.
     """
 
     COMPOSE_PATH = "docker-compose.yml"
+    # Ports belonging to a metrics or trace backend. None may be published by
+    # this layer, on any interface — loopback included, because "only on
+    # localhost" is how the previous Grafana justified itself.
+    # 3001 is deliberately absent: that is the chat interface, a different
+    # argument, covered by ADR-013.
+    BACKEND_PORTS = {"9090", "3000"}
 
-    def test_prometheus_port_not_published(self, repo_root: Path) -> None:
-        """Port 9090 (Prometheus) must NOT appear in any ports: section."""
+    def test_no_backend_port_is_published(self, repo_root: Path) -> None:
         path = repo_root / self.COMPOSE_PATH
         if not path.exists():
             pytest.skip("docker-compose.yml not created yet")
         compose = yaml.safe_load(path.read_text(encoding="utf-8"))
         for svc_name, svc in compose.get("services", {}).items():
-            ports = svc.get("ports", [])
-            for port_mapping in ports:
-                mapping = str(port_mapping)
-                # Match port 9090 in any position (host:container, :9090, 9090:...)
-                assert "9090" not in mapping.split(":"), (
-                    f"Service '{svc_name}' exposes port 9090 (Prometheus) in "
-                    f"ports: — Prometheus must stay on the internal Compose "
-                    f"network per §9.3"
+            for port_mapping in svc.get("ports", []) or []:
+                published = set(str(port_mapping).split(":"))
+                offending = published & self.BACKEND_PORTS
+                assert not offending, (
+                    f"service {svc_name!r} publishes {sorted(offending)}, which "
+                    "belongs to the metrics backend in base-platform. This "
+                    "layer emits and publishes scrape targets; it does not run "
+                    "the backend (C4)."
                 )
 
-    def test_grafana_port_bound_localhost(self, repo_root: Path) -> None:
-        """Port 3000 (Grafana) must be bound to 127.0.0.1."""
+    def test_no_backend_service_is_defined(self, repo_root: Path) -> None:
+        """A backend reachable only on the internal network is still a backend."""
         path = repo_root / self.COMPOSE_PATH
         if not path.exists():
             pytest.skip("docker-compose.yml not created yet")
         compose = yaml.safe_load(path.read_text(encoding="utf-8"))
-        grafana_ports = compose.get("services", {}).get("grafana", {}).get("ports", [])
-        found_localhost = False
-        for port_mapping in grafana_ports:
-            mapping = str(port_mapping)
-            if "127.0.0.1" in mapping and "3000" in mapping:
-                found_localhost = True
-                break
-        assert found_localhost, (
-            "Grafana port 3000 must be bound to 127.0.0.1 (localhost only) — "
-            f"got: {grafana_ports}"
+        present = {"prometheus", "grafana", "langfuse"} & set(
+            compose.get("services", {})
+        )
+        assert not present, (
+            f"{sorted(present)} is defined here. The backend belongs to "
+            "base-platform; publish targets in observability/scrape.d/ instead."
         )

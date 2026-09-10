@@ -1,4 +1,4 @@
-# IDIA Server — Docker Compose orchestration
+# base-inference — the inference layer's own services.
 #
 # ┌─────────────────────────────────────────────────────────────────────┐
 # │  IMPORTANT: Do NOT run `docker compose up` directly.               │
@@ -6,17 +6,25 @@
 # │  It pre-renders configs, starts services, and validates the stack. │
 # └─────────────────────────────────────────────────────────────────────┘
 #
-# Four service groups:
+# This file is one layer's fragment, not the whole platform. The composed
+# deployment is base-platform/compose.base.yaml, which includes this one and
+# the other four.
+#
+# Service groups here:
 #   1. ray-head              (Ray Serve LLM + vLLM inference)
 #   2. postgres + litellm    (gateway — auth, virtual keys, spend tracking)
-#   3. open-webui            (chat interface for end users)
-#   4. prometheus + grafana + dcgm-exporter (monitoring)
+#   3. dcgm-exporter         (GPU metrics, emitted under C4)
+#   4. open-webui            (chat interface — BELONGS TO THE INTERFACE LAYER,
+#                             still here pending its move; see issue #14)
+#
+# The metrics backend is not here. Prometheus and Grafana belong to the
+# platform layer; this layer emits and publishes its scrape targets in
+# observability/scrape.d/.
 #
 # Two ports are reachable from the network: 4000 (LiteLLM API) and 3001
-# (Open WebUI). Port 3000 (Grafana) is bound to 127.0.0.1 and reachable only
-# from the host. Ray ingress (8000), dashboard (8265), client port (10001),
-# Prometheus (9090) and PostgreSQL (5432) stay on the internal Compose
-# network — they are NEVER published.
+# (Open WebUI). Ray ingress (8000), dashboard (8265), client port (10001)
+# and PostgreSQL (5432) stay on the internal Compose network — they are
+# NEVER published.
 #
 # Open WebUI on 3001 is a deliberate exception to the "only 4000" rule, and
 # it ships without TLS: put it behind a reverse proxy on any network that is
@@ -210,44 +218,20 @@ services:
     restart: unless-stopped
 
   # ── Monitoring ────────────────────────────────────────────────────────
-  # Prometheus scrapes metrics from the internal Compose network.
-  # Port 9090 is NOT published — access the UI via docker compose exec.
-  # See docs/ARCHITECTURE.md   for details.
-
-  prometheus:
-    image: prom/prometheus:v2.55.0
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.retention.time=15d'
-      - '--storage.tsdb.retention.size=5GB'
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus_data:/prometheus
-    deploy:
-      resources:
-        limits:
-          memory: "1g"               # prevent unbounded /prometheus growth
-    restart: unless-stopped
-    # NO ports: published — 9090 is internal. Grafana queries it via the
-    # internal Compose network. For CLI access: docker compose exec prometheus sh
-
-  # Grafana provides dashboards and alerting UI.
-  # Bound to 127.0.0.1:3000 — accessible only from the host machine.
-
-  grafana:
-    image: grafana/grafana:11.4.0
-    depends_on:
-      - prometheus
-    ports:
-      - "127.0.0.1:3000:3000"       # localhost only — no external access
-    volumes:
-      - ./grafana/datasources:/etc/grafana/provisioning/datasources
-      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards
-      - grafana_data:/var/lib/grafana
-    environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
-    restart: unless-stopped
+  # The metrics backend is NOT here. Prometheus and Grafana belong to the
+  # platform layer (C4), and this layer only emits.
+  #
+  # What this layer publishes instead:
+  #   observability/scrape.d/inference.yml   the targets below, for the backend
+  #   observability/dashboards/vllm.json     the engine dashboard
+  #
+  # Consequence worth knowing before you look for a dashboard: `docker compose
+  # up` here gives you a working server with no graphs. To see them, bring up
+  # the composed base — base-platform/compose.base.yaml — which runs the
+  # backend and mounts what every layer published.
+  #
+  # This is a real regression against the single-server setup, and it is the
+  # price of the split: one Prometheus for five layers instead of five.
 
   # DCGM Exporter — NVIDIA GPU metrics (utilization, VRAM, temperature).
   # Uses a profile so it only starts on native Linux with NVIDIA drivers:
@@ -270,10 +254,6 @@ services:
     restart: unless-stopped
 
 volumes:
-  prometheus_data:
-    name: idia_prometheus_data
-  grafana_data:
-    name: idia_grafana_data
   idia_hf_cache:
     name: idia_hf_cache
   # Virtual keys, spend history, budgets. Losing this volume means every user

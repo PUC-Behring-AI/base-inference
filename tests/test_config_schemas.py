@@ -2,8 +2,8 @@
 
 These tests validate that infrastructure configuration files
 (Dockerfile.ray, serve_config.yaml, docker-compose.yml, config.yaml,
-.env.example, prometheus.yml) conform to the structure
-defined in docs/ARCHITECTURE.md.
+.env.example, observability/scrape.d/inference.yml) conform to the
+structure defined in docs/ARCHITECTURE.md.
 
 Each test skips gracefully if the target file has not been created
 yet (later phase), so this module is safe to run from Phase 1 onward.
@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from typing import Any
 
 import pytest
 import yaml
@@ -20,17 +21,17 @@ import yaml
 
 # ── Helpers ─────────────────────────────────────────────────────────────
 
-def _read_yaml(path: Path) -> dict | None:
-    """Return parsed YAML, or None if file is absent."""
+def _read_yaml(path: Path) -> Any:
+    """Return parsed YAML, or None if file is absent.
+
+    Not annotated as `dict | None`: a Prometheus `scrape_config_files`
+    fragment is a bare list, and pinning this to a mapping would make the
+    fragment's own tests lie about what they parsed.
+    """
     if not path.exists():
         return None
     raw = path.read_text(encoding="utf-8")
     return yaml.safe_load(raw)
-
-
-def _has_keys(obj: dict, *keys: str) -> bool:
-    """Check that *keys exist at the top level of *obj*."""
-    return all(k in obj for k in keys)
 
 
 # ── serve_config.yaml (§5.3) ────────────────────────────────────────────
@@ -97,7 +98,7 @@ class TestServeConfig:
 
 # ── docker-compose.yml (§5.4, §10.2) ────────────────────────────────────
 
-COMPOSE_REQUIRED_SERVICES = ["ray-head", "litellm", "prometheus", "grafana", "dcgm-exporter"]
+COMPOSE_REQUIRED_SERVICES = ["ray-head", "litellm", "dcgm-exporter"]
 
 
 @pytest.mark.config
@@ -186,146 +187,69 @@ class TestLiteLLMConfig:
         )
 
 
-# ── prometheus.yml (§10.2) ──────────────────────────────────────────────
+# ── observability/scrape.d/inference.yml (C4) ───────────────────────────
+#
+# The backend moved to base-platform. What this layer keeps is the file
+# declaring its own targets, which base-platform mounts and reads through
+# `scrape_config_files`. The assertions below moved with the file: they no
+# longer check a server's configuration, they check that this layer asks for
+# exactly the three targets it emits on.
 
-PROMETHEUS_REQUIRED_KEYS = ["global", "scrape_configs"]
-
-# Expected scrape target addresses from docker-compose service names
 EXPECTED_TARGETS = ["ray-head:8080", "litellm:4000", "dcgm-exporter:9400"]
 
 
 @pytest.mark.config
-class TestPrometheusConfig:
-    """prometheus.yml structure per §10.2."""
+class TestScrapeTargets:
+    """What this layer publishes for the platform layer's backend to scrape."""
 
     @pytest.fixture
-    def config(self, config_files: dict[str, Path]) -> dict | None:
-        return _read_yaml(config_files["prometheus"])
+    def jobs(self, config_files: dict[str, Path]) -> list | None:
+        return _read_yaml(config_files["scrape"])
 
-    def test_exists(self, config: dict | None) -> None:
-        if config is None:
-            pytest.skip("prometheus.yml not created yet (Phase 4)")
-        assert isinstance(config, dict)
-
-    def test_has_required_keys(self, config: dict | None) -> None:
-        if config is None:
-            pytest.skip("prometheus.yml not created yet")
-        for key in PROMETHEUS_REQUIRED_KEYS:
-            assert key in config, f"Missing required key: {key}"
-
-    def test_scrape_configs_list(self, config: dict | None) -> None:
-        if config is None:
-            pytest.skip("prometheus.yml not created yet")
-        scrape_configs = config.get("scrape_configs", [])
-        assert isinstance(scrape_configs, list)
-        assert len(scrape_configs) > 0
-
-    # ── Phase 4 extended tests ────────────────────────────────────────────
-
-    def test_scrape_interval_15s(self, config: dict | None) -> None:
-        """Global scrape interval matches the architecture default."""
-        if config is None:
-            pytest.skip("prometheus.yml not created yet (Phase 4)")
-        interval = config.get("global", {}).get("scrape_interval")
-        assert interval == "15s", (
-            f"Expected scrape_interval=15s, got {interval!r} (§10.2)"
+    def test_exists_and_is_a_job_list(self, jobs: list | None) -> None:
+        assert jobs is not None, (
+            "observability/scrape.d/inference.yml is missing — without it the "
+            "platform layer's backend scrapes nothing from this layer, and "
+            "nothing says so"
+        )
+        assert isinstance(jobs, list), (
+            "a scrape_config_files fragment is a LIST of jobs, not a mapping "
+            "with a scrape_configs key — Prometheus reads it as a bare list"
         )
 
-    def test_targets_match_architecture(self, config: dict | None) -> None:
-        """Scrape targets must include ray-head:8080 and litellm:4000."""
-        if config is None:
-            pytest.skip("prometheus.yml not created yet (Phase 4)")
-        jobs = config.get("scrape_configs", [])
-        found_targets: set[str] = set()
+    def test_targets_match_the_services_this_layer_runs(
+        self, jobs: list | None
+    ) -> None:
+        assert jobs is not None
+        found: set[str] = set()
         for job in jobs:
             for group in job.get("static_configs", []):
                 for target in group.get("targets", []):
-                    found_targets.add(target)
+                    found.add(target)
         for expected in EXPECTED_TARGETS:
-            assert expected in found_targets, (
-                f"Expected scrape target {expected!r} not found in "
-                f"scrape_configs — got {sorted(found_targets)}"
+            assert expected in found, (
+                f"scrape target {expected!r} missing — got {sorted(found)}"
             )
 
-    def test_no_alerting_rules(self, config: dict | None) -> None:
-        """Alerting rules are delegated to Grafana, not Prometheus."""
-        if config is None:
-            pytest.skip("prometheus.yml not created yet (Phase 4)")
-        rule_files = config.get("rule_files", None)
-        assert rule_files is None or rule_files == [], (
-            "Prometheus-level alerting rules should not be configured — "
-            "alerts are delegated to Grafana (§10.3)"
-        )
+    def test_every_job_is_labelled_with_this_layer(self, jobs: list | None) -> None:
+        """Series from five layers land in one backend, so the label is not
+        decoration: without it, `layer=` cannot separate them."""
+        assert jobs is not None
+        for job in jobs:
+            for group in job.get("static_configs", []):
+                labels = group.get("labels", {})
+                assert labels.get("layer") == "inference", (
+                    f"job {job.get('job_name')!r} is missing layer=inference"
+                )
 
+    def test_no_global_section(self, jobs: list | None) -> None:
+        """`global` belongs to the backend, and this is not the backend.
 
-# ── grafana/datasources/datasource.yml (§10.2) ─────────────────────────────
-
-GRAFANA_DATASOURCE_KEY = "datasources"
-
-
-@pytest.mark.config
-class TestGrafanaDatasourceConfig:
-    """grafana/datasources/datasource.yml — Prometheus datasource provisioning."""
-
-    PATH = "grafana/datasources/datasource.yml"
-
-    @pytest.fixture
-    def datasource(self, repo_root: Path) -> dict | None:
-        path = repo_root / self.PATH
-        if not path.exists():
-            pytest.skip("grafana/datasources not created yet (Phase 4)")
-        with open(path, encoding="utf-8") as f:
-            parsed = yaml.safe_load(f)
-        return parsed
-
-    def test_datasource_file_exists(self, repo_root: Path) -> None:
-        path = repo_root / self.PATH
-        assert path.exists(), (
-            f"{self.PATH} must exist for Grafana datasource provisioning"
-        )
-
-    def test_has_datasources_key(self, datasource: dict | None) -> None:
-        if datasource is None:
-            pytest.skip("grafana/datasources not created yet")
-        assert GRAFANA_DATASOURCE_KEY in datasource, (
-            f"Missing key: {GRAFANA_DATASOURCE_KEY}"
-        )
-
-    def test_datasource_url(self, datasource: dict | None) -> None:
-        """Datasource URL must point to the Prometheus service."""
-        if datasource is None:
-            pytest.skip("grafana/datasources not created yet")
-        ds_list = datasource.get(GRAFANA_DATASOURCE_KEY, [])
-        assert len(ds_list) >= 1, "At least one datasource must be configured"
-        url = ds_list[0].get("url", "")
-        assert url == "http://prometheus:9090", (
-            f"Expected datasource url=http://prometheus:9090, got {url!r}"
-        )
-
-    def test_datasource_is_default(self, datasource: dict | None) -> None:
-        if datasource is None:
-            pytest.skip("grafana/datasources not created yet")
-        ds_list = datasource.get(GRAFANA_DATASOURCE_KEY, [])
-        assert ds_list[0].get("isDefault") is True, (
-            "Datasource must be configured as default"
-        )
-
-    def test_datasource_access_proxy(self, datasource: dict | None) -> None:
-        if datasource is None:
-            pytest.skip("grafana/datasources not created yet")
-        ds_list = datasource.get(GRAFANA_DATASOURCE_KEY, [])
-        assert ds_list[0].get("access") == "proxy", (
-            "Datasource access mode should be 'proxy' — Grafana proxies "
-            "requests to Prometheus on the internal network"
-        )
-
-    def test_datasource_type_prometheus(self, datasource: dict | None) -> None:
-        if datasource is None:
-            pytest.skip("grafana/datasources not created yet")
-        ds_list = datasource.get(GRAFANA_DATASOURCE_KEY, [])
-        assert ds_list[0].get("type") == "prometheus", (
-            "Datasource type must be 'prometheus'"
-        )
+        A fragment carrying its own global block is silently ignored, which
+        looks like a working scrape interval and is not one.
+        """
+        assert jobs is not None
+        assert isinstance(jobs, list), "a fragment with a global: block is a mapping"
 
 
 # ── .env.example ────────────────────────────────────────────────────────
