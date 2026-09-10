@@ -155,8 +155,8 @@ curl --version             # qualquer versão
 ### 3.1 Clonar o repositório
 
 ```bash
-git clone https://github.com/PUC-Behring-AI/idia-server.git
-cd idia-server
+git clone https://github.com/PUC-Behring-AI/base-inference.git
+cd base-inference
 ```
 
 ### 3.2 Configurar variáveis de ambiente
@@ -235,10 +235,10 @@ GRAFANA_ADMIN_PASSWORD=minha-senha-segura
 [2/5] Pulling Docker images (skipping build)...
 [3/5] Starting services...
 [+] Running 5/5
- ✔ Container idia-server-ray-head-1    Started
- ✔ Container idia-server-litellm-1     Started
- ✔ Container idia-server-prometheus-1  Started
- ✔ Container idia-server-grafana-1     Started
+ ✔ Container base-inference-ray-head-1    Started
+ ✔ Container base-inference-litellm-1     Started
+ ✔ Container base-inference-prometheus-1  Started
+ ✔ Container base-inference-grafana-1     Started
 [✓] Services started
 [4/5] Waiting for server to be ready...
        URL: http://localhost:4000/health
@@ -324,10 +324,10 @@ general_settings:
 
 Services:
 NAME                           STATUS          PORTS
-idia-server-ray-head-1         Up (healthy)
-idia-server-litellm-1          Up (healthy)    0.0.0.0:4000->4000/tcp
-idia-server-prometheus-1       Up
-idia-server-grafana-1          Up              127.0.0.1:3000->3000/tcp
+base-inference-ray-head-1         Up (healthy)
+base-inference-litellm-1          Up (healthy)    0.0.0.0:4000->4000/tcp
+base-inference-prometheus-1       Up
+base-inference-grafana-1          Up              127.0.0.1:3000->3000/tcp
 
 LiteLLM health:
 [✓] LiteLLM is healthy
@@ -391,14 +391,14 @@ sudo ./idia service install
 ```
 
 **O que isso faz:**
-- Cria uma systemd unit em `/etc/systemd/system/idia-server.service`
+- Cria uma systemd unit em `/etc/systemd/system/base-inference.service`
 - Configura o serviço para iniciar após `docker.service` e `network-online.target`
 - Habilita o serviço para iniciar automaticamente no boot
 - Inicia o servidor imediatamente (equivale a `./idia deploy local --no-wait`)
 
 **Fluxo no boot:**
 1. Sistema liga → systemd inicia o Docker daemon
-2. `idia-server.service` executa `./idia deploy local --no-wait`
+2. `base-inference.service` executa `./idia deploy local --no-wait`
 3. Configs são renderizados, containers sobem com `restart: unless-stopped`
 4. LiteLLM fica disponível em `:4000` assim que o modelo carregar
    (~1-2 min em boots subsequentes com cache; ~15 min no primeiro boot)
@@ -406,8 +406,8 @@ sudo ./idia service install
 **Verificar status:**
 ```bash
 ./idia service status              # status do serviço (systemd ou compose)
-systemctl status idia-server       # via systemd diretamente
-journalctl -u idia-server -f       # logs do serviço
+systemctl status base-inference       # via systemd diretamente
+journalctl -u base-inference -f       # logs do serviço
 ./idia status                      # saúde dos containers
 ```
 
@@ -882,13 +882,13 @@ LiteLLM sobe sem saber rotear para o modelo que o `.env` declara.
 ```bash
 # Verificar se o serviço está enabled:
 systemctl is-enabled docker           # Deve retornar "enabled"
-systemctl is-enabled idia-server      # Deve retornar "enabled"
+systemctl is-enabled base-inference      # Deve retornar "enabled"
 
 # Verificar logs do serviço:
-journalctl -u idia-server --since "5 minutes ago"
+journalctl -u base-inference --since "5 minutes ago"
 ```
 
-**Solução:** Se `idia-server` não estiver enabled:
+**Solução:** Se `base-inference` não estiver enabled:
 ```bash
 sudo ./idia service install
 ```

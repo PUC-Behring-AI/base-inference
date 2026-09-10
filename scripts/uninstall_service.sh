@@ -11,8 +11,14 @@ set -euo pipefail
 
 # ── Paths ────────────────────────────────────────────────────────────────────
 
-UNIT_NAME="idia-server"
+UNIT_NAME="base-inference"
 UNIT_FILE="/etc/systemd/system/${UNIT_NAME}.service"
+
+# A host provisioned before 2026-09-10 has the unit under its old name. Remove
+# that one too, or `uninstall` leaves behind the very service it was asked to
+# take away.
+LEGACY_UNIT_NAME="idia-server"
+LEGACY_UNIT_FILE="/etc/systemd/system/${LEGACY_UNIT_NAME}.service"
 
 # ── Colours ──────────────────────────────────────────────────────────────────
 
@@ -35,8 +41,25 @@ if [ "$(id -u)" -ne 0 ]; then
     exit 1
 fi
 
-if [ ! -f "$UNIT_FILE" ]; then
+if [ ! -f "$UNIT_FILE" ] && [ ! -f "$LEGACY_UNIT_FILE" ]; then
     echo "Unit file not found at $UNIT_FILE — already uninstalled?" >&2
+    exit 0
+fi
+
+# ── Remove the pre-rename unit, if this host still has it ────────────────────
+# Checked before the current unit, because a host provisioned before
+# 2026-09-10 may have only the old one — and exiting early on the absence of
+# the new name would leave the old service running while reporting success.
+
+if [ -f "$LEGACY_UNIT_FILE" ]; then
+    systemctl disable --now "${LEGACY_UNIT_NAME}.service" 2>/dev/null || true
+    rm -f "$LEGACY_UNIT_FILE"
+    _info "Pre-rename unit removed: $LEGACY_UNIT_FILE"
+fi
+
+if [ ! -f "$UNIT_FILE" ]; then
+    systemctl daemon-reload
+    _info "systemd daemon reloaded"
     exit 0
 fi
 
