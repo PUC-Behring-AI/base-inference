@@ -2,7 +2,8 @@
 # Segue AGENTS-base.md v1.0, em PUC-Behring-AI/base-platform/docs/AGENTS-base.md.
 # Aquele arquivo carrega os axiomas comuns aos dez repositórios; este carrega o
 # que é só desta camada. Em conflito, este vence.
-# Version: 3.0
+# Base: v0.2.0
+# Version: 3.1
 # Last updated: 2026-09-10
 
 ## Project
@@ -28,6 +29,26 @@
 Fluxo: `Client → :4000 → LiteLLM → :8000 → Ray Serve → vLLM`
 
 Referência arquitetural completa: `docs/ARCHITECTURE.md`
+
+## Contratos desta camada
+
+Segue a base **v0.2.0**. Definição normativa em
+`base-platform/docs/CONTRACTS.md`; mudar um contrato é PR lá, nunca aqui.
+
+| | Direção | O que |
+|---|---|---|
+| **C2** | expõe, `agents → inference` | Compatível com OpenAI. A chave é função da classificação máxima do contexto — e **esta camada não confia na escolha de quem chama**: serve o que a chave permite. |
+| **C5** | expõe, `platform → inference` | Identidade: emitir, consultar e revogar credencial, com orçamento e limite de taxa. |
+| **C6** | emite, `all → knowledge` | Proveniência: qual modelo foi endereçado, **sob qual política de chave**, com o identificador de requisição propagado sem alteração. |
+| **C4** | emite, `all → platform` | Métrica. **Sem carga útil, nunca** — nem prompt, nem completion, nem identificador que resolva para uma pessoa. |
+
+**Onde esta camada carrega a garantia.** C2 é o ponto de imposição da regra de
+roteamento: a decisão é da camada de agentes, e aqui ela não é revalidada — é
+substituída por uma política de chave. Um defeito lá em cima não vaza, porque a
+credencial que chega não tem permissão de sair da rede.
+
+Não acrescente um caminho que confie num campo da requisição para decidir se
+pode chamar provedor externo. Isso devolve a garantia para um `if`.
 
 ## Directory Layout
 
