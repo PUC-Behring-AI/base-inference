@@ -1,4 +1,4 @@
-# IDIA Server — Ray Serve LLM container
+# base-inference — Ray Serve LLM container
 #
 # Builds on the official Ray GPU image (CUDA 12.1, same digest as -cu121 tag).
 # ray[serve,llm]==2.56.0 pins vllm==0.22.0 internally via llm-requirements.txt,

@@ -11,14 +11,14 @@ Usage (via Dockerfile CMD):
 Workflow:
     1. Read serve_config.yaml as a template with ${VAR} placeholders.
     2. Substitute each placeholder from the corresponding environment variable.
-    3. Write the rendered YAML to a fixed path (/tmp/idia_serve_config.yaml).
+    3. Write the rendered YAML to a fixed path (/tmp/base_inference_serve_config.yaml).
     4. exec serve run on the rendered file (replaces this process).
 
 Flags:
     --dry-run       Render serve_config only to stdout. No files written.
                     No Ray Serve launched. Useful for config validation.
     --render-all    Render BOTH serve_config and litellm_config to repo root.
-                    Used by ``./idia deploy local`` before ``docker compose up``.
+                    Used by ``./base-inference deploy local`` before ``docker compose up``.
 
 Required env vars:
     MODEL_ID          — Short model alias (e.g. "mistral-7b")
@@ -56,7 +56,7 @@ ENV_SCHEMA: dict[str, tuple[type, object]] = {
 }
 
 TEMPLATE_FILENAME = "serve_config.yaml"
-RENDERED_PATH = Path("/tmp/idia_serve_config.yaml")
+RENDERED_PATH = Path("/tmp/base_inference_serve_config.yaml")
 
 # Placeholder pattern for env var substitution
 ENV_VAR_RE = re.compile(r"\$\{(\w+)\}")
@@ -699,7 +699,7 @@ def main() -> None:
         --dry-run      Render serve_config to stdout only. No files written,
                        no Ray Serve launched. Useful for config validation.
         --render-all   Render BOTH configs (serve + litellm) to repo root.
-                       Used by ./idia deploy local before docker compose up.
+                       Used by ./base-inference deploy local before docker compose up.
     """
     caller_dir = Path(__file__).resolve().parent
     repo_root = caller_dir.parent  # scripts/../ = repo root

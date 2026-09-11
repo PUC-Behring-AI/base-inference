@@ -1,7 +1,7 @@
 """Tests for scripts/colleague.sh — unified user provisioning.
 
 Everything here runs without Docker, without a LiteLLM server and without
-touching the operator's real .env: the script accepts IDIA_ENV_FILE so the
+touching the operator's real .env: the script accepts BASE_INFERENCE_ENV_FILE so the
 tests point it at a throwaway file, and only exercise the paths that stop
 before any network or container call (--help, tiers, --dry-run, validation).
 
@@ -28,12 +28,12 @@ ENV_TEMPLATE = """\
 LITELLM_MASTER_KEY=sk-test-master-key
 MODEL_ID=mistral-7b
 MODEL_SOURCE=mistralai/Mistral-7B-Instruct-v0.3
-IDIA_PUBLIC_HOST=idia.example.org
+BASE_INFERENCE_PUBLIC_HOST=base-inference.example.org
 """
 
 # A name that terminates the string literal it would be pasted into, plus a
 # payload that would execute if the value were interpolated into Python source.
-HOSTILE_NAME = "Ana D'Ávila'); import os; os.system('touch /tmp/idia_pwned'); #"
+HOSTILE_NAME = "Ana D'Ávila'); import os; os.system('touch /tmp/base_inference_pwned'); #"
 
 
 @pytest.fixture
@@ -67,7 +67,7 @@ def _code_lines(path: Path) -> list[str]:
 def run(script: Path, *args: str, env_file: Path | None = None) -> subprocess.CompletedProcess:
     env = dict(os.environ)
     if env_file is not None:
-        env["IDIA_ENV_FILE"] = str(env_file)
+        env["BASE_INFERENCE_ENV_FILE"] = str(env_file)
     return subprocess.run(
         ["bash", str(script), *args],
         capture_output=True,
@@ -145,19 +145,19 @@ class TestDryRun:
     """--dry-run reports the plan and creates nothing."""
 
     def test_dry_run_exits_zero(self, colleague: Path, fake_env: Path) -> None:
-        result = run(colleague, "create", "ana@idia.org", "Ana Costa", "--dry-run",
+        result = run(colleague, "create", "ana@example.org", "Ana Costa", "--dry-run",
                      env_file=fake_env)
         assert result.returncode == 0, result.stderr
 
     def test_dry_run_applies_tier_defaults(self, colleague: Path, fake_env: Path) -> None:
-        out = run(colleague, "create", "ana@idia.org", "Ana", "--tier", "classroom",
+        out = run(colleague, "create", "ana@example.org", "Ana", "--tier", "classroom",
                   "--dry-run", env_file=fake_env).stdout
         assert "20" in out, "classroom budget not shown"
         assert "300" in out, "classroom RPM not shown"
 
     def test_dry_run_announces_configured_host(self, colleague: Path, fake_env: Path) -> None:
-        """Credentials must reference IDIA_PUBLIC_HOST, never a baked-in address."""
-        result = run(colleague, "create", "ana@idia.org", "Ana", "--no-openwebui",
+        """Credentials must reference BASE_INFERENCE_PUBLIC_HOST, never a baked-in address."""
+        result = run(colleague, "create", "ana@example.org", "Ana", "--no-openwebui",
                      "--dry-run", env_file=fake_env)
         assert result.returncode == 0
 
@@ -174,16 +174,16 @@ class TestNoInjection:
         Before the rewrite this produced a Python SyntaxError halfway through
         provisioning, leaving an orphan LiteLLM key behind.
         """
-        result = run(colleague, "create", "ana@idia.org", "Ana D'Ávila", "--dry-run",
+        result = run(colleague, "create", "ana@example.org", "Ana D'Ávila", "--dry-run",
                      env_file=fake_env)
         assert result.returncode == 0, result.stderr
         assert "Ana D'Ávila" in result.stdout, "name was mangled"
 
     def test_hostile_payload_is_inert(self, colleague: Path, fake_env: Path) -> None:
-        marker = Path("/tmp/idia_pwned")
+        marker = Path("/tmp/base_inference_pwned")
         if marker.exists():
             marker.unlink()
-        result = run(colleague, "create", "ana@idia.org", HOSTILE_NAME, "--dry-run",
+        result = run(colleague, "create", "ana@example.org", HOSTILE_NAME, "--dry-run",
                      env_file=fake_env)
         assert result.returncode == 0, result.stderr
         assert not marker.exists(), "interpolated payload executed"
@@ -217,11 +217,11 @@ class TestNoEmbeddedSecrets:
 
     def test_public_host_comes_from_env(self, colleague: Path) -> None:
         source = colleague.read_text(encoding="utf-8")
-        assert "IDIA_PUBLIC_HOST" in source
+        assert "BASE_INFERENCE_PUBLIC_HOST" in source
 
     def test_env_example_documents_provisioning_vars(self, repo_root: Path) -> None:
         content = (repo_root / ".env.example").read_text(encoding="utf-8")
-        for var in ("IDIA_PUBLIC_HOST", "OWUI_DISCOVERY_KEY", "OWUI_CONTAINER"):
+        for var in ("BASE_INFERENCE_PUBLIC_HOST", "OWUI_DISCOVERY_KEY", "OWUI_CONTAINER"):
             assert var in content, f".env.example does not document {var}"
 
 
@@ -241,20 +241,20 @@ class TestBash32Compatible:
 # ── CLI wiring ──────────────────────────────────────────────────────────
 
 
-class TestIdiaColleagueRouting:
-    """./idia colleague must reach the script."""
+class TestBaseInferenceColleagueRouting:
+    """./base-inference colleague must reach the script."""
 
-    def test_colleague_in_idia_help(self, repo_root: Path) -> None:
+    def test_colleague_in_base_inference_help(self, repo_root: Path) -> None:
         result = subprocess.run(
-            ["bash", str(repo_root / "idia"), "--help"],
+            ["bash", str(repo_root / "base-inference"), "--help"],
             capture_output=True, text=True, timeout=30,
         )
         assert "colleague" in result.stdout
 
-    def test_idia_colleague_help_exits_zero(self, repo_root: Path) -> None:
+    def test_base_inference_colleague_help_exits_zero(self, repo_root: Path) -> None:
         """Guards the unbound-variable defect that made this route abort."""
         result = subprocess.run(
-            ["bash", str(repo_root / "idia"), "colleague", "--help"],
+            ["bash", str(repo_root / "base-inference"), "colleague", "--help"],
             capture_output=True, text=True, timeout=30,
         )
         assert result.returncode == 0, result.stderr
@@ -282,13 +282,13 @@ class TestSingleTierVocabulary:
         )
 
     def test_cli_delegates_to_colleague(self, repo_root: Path) -> None:
-        code = _code_lines(repo_root / "idia")
+        code = _code_lines(repo_root / "base-inference")
         assert not [ln for ln in code if "create_user.sh" in ln], "still invokes the old script"
         assert any("colleague.sh" in ln for ln in code)
 
     def test_usage_lists_the_real_tiers(self, repo_root: Path) -> None:
         result = subprocess.run(
-            ["bash", str(repo_root / "idia"), "user", "create"],
+            ["bash", str(repo_root / "base-inference"), "user", "create"],
             capture_output=True, text=True, timeout=15,
         )
         assert result.returncode != 0
@@ -299,7 +299,7 @@ class TestSingleTierVocabulary:
     def test_legacy_hard_maps_to_heavy(self, repo_root: Path) -> None:
         """Old muscle memory should keep working, loudly rather than silently."""
         result = subprocess.run(
-            ["bash", str(repo_root / "idia"), "user", "create", "alice", "hard"],
+            ["bash", str(repo_root / "base-inference"), "user", "create", "alice", "hard"],
             capture_output=True, text=True, timeout=15,
         )
         out = result.stdout + result.stderr

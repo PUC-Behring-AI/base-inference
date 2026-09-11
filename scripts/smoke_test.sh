@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # =============================================================================
-# IDIA Server — Post-Deploy Smoke Test
+# base-inference — Post-Deploy Smoke Test
 # =============================================================================
 #
-# Verifies that the IDIA Server LLM endpoint responds correctly after deploy.
+# Verifies that the base-inference LLM endpoint responds correctly after deploy.
 # Tests each configured model with a minimal chat completion request.
 #
 # Usage:
@@ -88,7 +88,7 @@ if [ "$WAIT_MODE" = true ]; then
         if [ "$elapsed" -ge "$WAIT_TIMEOUT_SEC" ]; then
             echo ""
             echo "ERROR: Server did not become healthy within ${WAIT_TIMEOUT_SEC}s"
-            echo "  Check logs: ./idia logs"
+            echo "  Check logs: ./base-inference logs"
             exit 1
         fi
     done

@@ -1,4 +1,4 @@
-# IDIA Server — de servidor local a plataforma portável
+# base-inference — de servidor local a plataforma portável
 
 **Data:** 2026-09-04
 **Estado:** proposto, aguardando aprovação
@@ -8,7 +8,7 @@
 
 ## 1. O problema
 
-Hoje o IDIA Server é um servidor de inferência que sobe num host com GPU via Docker
+Hoje o base-inference é um servidor de inferência que sobe num host com GPU via Docker
 Compose. Isso funciona, e depois do M0 funciona bem: emite chave virtual por pessoa,
 tem interface web, tem provisionamento num comando, tem suíte verde.
 

@@ -24,7 +24,7 @@
 # Use --models para restringir a um subconjunto.
 #
 # Requer:
-#   - .env com LITELLM_MASTER_KEY e IDIA_PUBLIC_HOST
+#   - .env com LITELLM_MASTER_KEY e BASE_INFERENCE_PUBLIC_HOST
 #   - Docker, com o container do Open WebUI no ar
 #   - curl, python3, openssl
 #
@@ -35,9 +35,9 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-ENV_FILE="${IDIA_ENV_FILE:-$PROJECT_DIR/.env}"
-# Nome exibido em mensagens de uso. O ./idia sobrescreve com "./idia colleague".
-PROG="${IDIA_PROG:-$(basename "$0")}"
+ENV_FILE="${BASE_INFERENCE_ENV_FILE:-$PROJECT_DIR/.env}"
+# Nome exibido em mensagens de uso. O ./base-inference sobrescreve com "./base-inference colleague".
+PROG="${BASE_INFERENCE_PROG:-$(basename "$0")}"
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # CONSTANTS
@@ -69,7 +69,7 @@ _load_env() {
   [ -n "${LITELLM_MASTER_KEY:-}" ] || die "LITELLM_MASTER_KEY não definido em $ENV_FILE"
 
   # Host anunciado ao usuário nas credenciais. Nunca hardcodado — ver issue #2.
-  IDIA_PUBLIC_HOST="${IDIA_PUBLIC_HOST:-localhost}"
+  BASE_INFERENCE_PUBLIC_HOST="${BASE_INFERENCE_PUBLIC_HOST:-localhost}"
   LITELLM_PORT="${LITELLM_PORT:-4000}"
   OWUI_PORT="${OWUI_PORT:-3001}"
   OWUI_CONTAINER="${OWUI_CONTAINER:-idia-webui}"
@@ -305,7 +305,7 @@ PY
     echo ""
     echo -e "${BOLD}=== API KEY (sem conta Open WebUI) ===${RESET}"
     echo -e "  Key:     ${key}"
-    echo -e "  API:     http://${IDIA_PUBLIC_HOST}:${LITELLM_PORT}/v1"
+    echo -e "  API:     http://${BASE_INFERENCE_PUBLIC_HOST}:${LITELLM_PORT}/v1"
     echo -e "  Models:  ${MODELS}"
     echo ""
     return 0
@@ -460,7 +460,7 @@ PY
   echo -e "${BOLD}  CREDENCIAIS — Entregar ao usuário${RESET}"
   echo -e "${BOLD}==========================================================${RESET}"
   echo ""
-  echo -e "  ${CYAN}Acesse:${RESET}  http://${IDIA_PUBLIC_HOST}:${OWUI_PORT}"
+  echo -e "  ${CYAN}Acesse:${RESET}  http://${BASE_INFERENCE_PUBLIC_HOST}:${OWUI_PORT}"
   echo -e "  ${CYAN}Email:${RESET}   ${EMAIL}"
   echo -e "  ${CYAN}Senha:${RESET}   ${PASSWORD}"
   echo -e "  ${CYAN}Tier:${RESET}    ${TIER}"
@@ -615,7 +615,7 @@ cmd_tiers() {
 
 cmd_help() {
   cat <<EOF
-IDIA Colleague Manager
+base-inference Colleague Manager
 
 Uso: $PROG {create|key|status|revoke|tiers} [args...]
 
@@ -645,19 +645,19 @@ tiers                    Definições de tier e modelos concedidos
 
 Variáveis de ambiente (via .env):
   LITELLM_MASTER_KEY   obrigatória
-  IDIA_PUBLIC_HOST     host anunciado nas credenciais (default: localhost)
+  BASE_INFERENCE_PUBLIC_HOST     host anunciado nas credenciais (default: localhost)
   OWUI_DISCOVERY_KEY   virtual key usada só para descoberta de modelos
   OWUI_CONTAINER       nome do container Open WebUI (default: idia-webui)
   LITELLM_PORT         default 4000
   OWUI_PORT            default 3001
 
 Exemplos:
-  $PROG create ana@idia.org "Ana Costa" --tier heavy --budget 50 --budget-period 1mo
-  $PROG create turma@idia.org "Sala 202" --tier classroom
-  $PROG create bot@idia.org "Bot" --no-openwebui --tier light
+  $PROG create ana@example.org "Ana Costa" --tier heavy --budget 50 --budget-period 1mo
+  $PROG create turma@example.org "Sala 202" --tier classroom
+  $PROG create bot@example.org "Bot" --no-openwebui --tier light
   $PROG tiers
-  $PROG status ana@idia.org
-  $PROG revoke ana@idia.org
+  $PROG status ana@example.org
+  $PROG revoke ana@example.org
 EOF
 }
 

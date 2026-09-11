@@ -1,4 +1,4 @@
-# IDIA Server — Guia de Operações
+# base-inference — Guia de Operações
 
 > **Documento de referência para o mantenedor.** Cobre todos os cenários de
 > deploy, desde a instalação de pré-requisitos até a configuração de múltiplos
@@ -37,7 +37,7 @@
 Mantenedor edita .env
         │
         ▼
-./idia deploy local
+./base-inference deploy local
         │
         ├─ [1/5] render_config.py --render-all
         │         ├─ rendered_serve_config.yaml   → Ray Serve
@@ -52,12 +52,12 @@ Mantenedor edita .env
               http://localhost:4000  ✓
 ```
 
-**Por que `./idia` e não `docker compose up` diretamente?**
+**Por que `./base-inference` e não `docker compose up` diretamente?**
 
 O LiteLLM não faz substituição de variáveis de ambiente (`${VAR}`) no seu
 arquivo de configuração. Se você rodar `docker compose up` sem o passo de
 pré-renderização, os modelos terão o nome literal `"${MODEL_ID}"` e
-**100% das requisições falharão** com `model not found`. O `./idia deploy
+**100% das requisições falharão** com `model not found`. O `./base-inference deploy
 local` garante que os arquivos renderizados existam antes de subir os
 containers.
 
@@ -178,8 +178,8 @@ HF_TOKEN=hf_aBcDeFgHiJkLmNoPqRsTuVwXyZ
 
 # Chave master do LiteLLM — usada para criar virtual keys de usuários
 # Gerar uma chave segura:
-#   python3 -c "import secrets; print('sk-idia-' + secrets.token_hex(16))"
-LITELLM_MASTER_KEY=sk-idia-a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6
+#   python3 -c "import secrets; print('sk-base-' + secrets.token_hex(16))"
+LITELLM_MASTER_KEY=sk-base-a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6
 
 # Nome curto do modelo — é o que os clientes usarão no campo "model"
 # Ex: "llama-3.1-8b", "mistral-7b", "qwen-2.5-14b"
@@ -219,14 +219,14 @@ GRAFANA_ADMIN_PASSWORD=minha-senha-segura
 ### 3.3 Deploy (um único comando)
 
 ```bash
-./idia deploy local
+./base-inference deploy local
 ```
 
 **Saída esperada:**
 
 ```
 ══════════════════════════════════════
-  IDIA Server — Local Deploy
+  base-inference — Local Deploy
 ══════════════════════════════════════
 
 [1/5] Rendering configs (serve_config + litellm_config)...
@@ -255,17 +255,17 @@ GRAFANA_ADMIN_PASSWORD=minha-senha-segura
 [✓] Smoke test passed
 
 ══════════════════════════════════════
-  IDIA Server — Server Running
+  base-inference — Server Running
 ══════════════════════════════════════
 
   API endpoint:  http://localhost:4000
   Grafana:       http://localhost:3000  (admin / $GRAFANA_ADMIN_PASSWORD)
 
 Next steps:
-  ./idia user create alice hard       # Create a user (researcher tier)
-  ./idia user create bob  regular     # Create a user (grad student tier)
-  ./idia status                       # Check all services
-  ./idia logs                         # View logs
+  ./base-inference user create alice hard       # Create a user (researcher tier)
+  ./base-inference user create bob  regular     # Create a user (grad student tier)
+  ./base-inference status                       # Check all services
+  ./base-inference logs                         # View logs
 ```
 
 > **Primeiro deploy:** O download dos pesos do Llama 3.1 8B leva de 5 a 15
@@ -277,7 +277,7 @@ Next steps:
 Para verificar se a configuração está correta sem iniciar containers:
 
 ```bash
-./idia deploy local --dry-run
+./base-inference deploy local --dry-run
 ```
 
 Este comando renderiza os dois arquivos de configuração e os imprime. Útil
@@ -312,14 +312,14 @@ general_settings:
 ### 3.5 Verificar saúde dos serviços
 
 ```bash
-./idia status
+./base-inference status
 ```
 
 **Saída esperada (servidor saudável):**
 
 ```
 ══════════════════════════════════════
-  IDIA Server — Status
+  base-inference — Status
 ══════════════════════════════════════
 
 Services:
@@ -344,7 +344,7 @@ GPU status:
 ```bash
 # Testar diretamente com curl (substitua SK pela sua chave master ou virtual)
 curl http://localhost:4000/v1/chat/completions \
-  -H "Authorization: Bearer sk-idia-a1b2c3d4..." \
+  -H "Authorization: Bearer sk-base-a1b2c3d4..." \
   -H "Content-Type: application/json" \
   -d '{
     "model": "mistral-7b",
@@ -387,39 +387,39 @@ Para garantir que o servidor suba automaticamente quando a máquina ligar,
 instale o serviço systemd:
 
 ```bash
-sudo ./idia service install
+sudo ./base-inference service install
 ```
 
 **O que isso faz:**
 - Cria uma systemd unit em `/etc/systemd/system/base-inference.service`
 - Configura o serviço para iniciar após `docker.service` e `network-online.target`
 - Habilita o serviço para iniciar automaticamente no boot
-- Inicia o servidor imediatamente (equivale a `./idia deploy local --no-wait`)
+- Inicia o servidor imediatamente (equivale a `./base-inference deploy local --no-wait`)
 
 **Fluxo no boot:**
 1. Sistema liga → systemd inicia o Docker daemon
-2. `base-inference.service` executa `./idia deploy local --no-wait`
+2. `base-inference.service` executa `./base-inference deploy local --no-wait`
 3. Configs são renderizados, containers sobem com `restart: unless-stopped`
 4. LiteLLM fica disponível em `:4000` assim que o modelo carregar
    (~1-2 min em boots subsequentes com cache; ~15 min no primeiro boot)
 
 **Verificar status:**
 ```bash
-./idia service status              # status do serviço (systemd ou compose)
+./base-inference service status              # status do serviço (systemd ou compose)
 systemctl status base-inference       # via systemd diretamente
 journalctl -u base-inference -f       # logs do serviço
-./idia status                      # saúde dos containers
+./base-inference status                      # saúde dos containers
 ```
 
 **Desinstalar:**
 ```bash
-sudo ./idia service uninstall
+sudo ./base-inference service uninstall
 ```
 
 > ⚠️ **Persistência de virtual keys:** As chaves de usuário do LiteLLM
 > são armazenadas em memória e são **perdidas em todo restart** (boot,
 > crash, `docker compose down`). Após cada reboot:
-> 1. Recrie as chaves com `./idia user create <nome> <tier>` ou
+> 1. Recrie as chaves com `./base-inference user create <nome> <tier>` ou
 > 2. Restaure de backup (veja §5.4 "Backup das chaves de usuários").
 >
 > Este é um problema conhecido da versão open-source do LiteLLM.
@@ -429,7 +429,7 @@ sudo ./idia service uninstall
 
 ## 4. Configuração multi-model
 
-O IDIA Server suporta N modelos simultaneamente. Cada modelo roda como um
+O base-inference suporta N modelos simultaneamente. Cada modelo roda como um
 deployment independente no Ray Serve, e o LiteLLM roteia para o correto
 baseado no campo `model` da requisição.
 
@@ -480,8 +480,8 @@ GPU_MEMORY_UTILIZATION=0.85    # Ligeiramente menor para acomodar overhead
 ### 4.3 Re-deploy
 
 ```bash
-./idia stop
-./idia deploy local
+./base-inference stop
+./base-inference deploy local
 ```
 
 O `render_config.py` valida automaticamente o orçamento de VRAM antes de
@@ -499,7 +499,7 @@ FATAL: VRAM budget exceeded.
 ### 4.4 Verificar os dois modelos
 
 ```bash
-./idia status
+./base-inference status
 # Deve mostrar:
 #   Loaded models:
 #     • mistral-7b
@@ -519,7 +519,7 @@ curl http://localhost:4000/v1/chat/completions \
 
 ## 5. Gestão de usuários
 
-O IDIA Server usa o sistema de virtual keys do LiteLLM. Cada usuário recebe
+O base-inference usa o sistema de virtual keys do LiteLLM. Cada usuário recebe
 uma chave única com limites de uso definidos pelo tier.
 
 ### 5.1 Tiers disponíveis
@@ -533,23 +533,23 @@ uma chave única com limites de uso definidos pelo tier.
 ### 5.2 Criar usuário
 
 ```bash
-./idia user create <nome> <tier>
+./base-inference user create <nome> <tier>
 ```
 
 Exemplos:
 
 ```bash
-./idia user create alice hard
+./base-inference user create alice hard
 # {
-#   "key": "sk-idia-user-a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6",
+#   "key": "sk-base-user-a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6",
 #   "key_alias": "alice",
 #   "team_id": "hard",
 #   "models": ["mistral-7b"],
 #   "expires": null
 # }
 
-./idia user create carlos regular
-./idia user create diana light
+./base-inference user create carlos regular
+./base-inference user create diana light
 ```
 
 > **Importante:** A chave é gerada uma única vez e exibida apenas no momento
@@ -560,7 +560,7 @@ Exemplos:
 ### 5.3 Listar usuários
 
 ```bash
-./idia user list
+./base-inference user list
 # Active virtual keys:
 #   alice (hard) — expires: never
 #   carlos (regular) — expires: never
@@ -576,7 +576,7 @@ LiteLLM permite revogar chaves via API:
 curl -X POST http://localhost:4000/key/delete \
   -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"keys": ["sk-idia-user-a1b2c3d4..."]}'
+  -d '{"keys": ["sk-base-user-a1b2c3d4..."]}'
 ```
 
 ### 5.5 Criar chave com expiração
@@ -639,11 +639,11 @@ docker compose exec ray-head curl -s http://localhost:8080/metrics | grep vllm
 ### 6.3 Logs por serviço
 
 ```bash
-./idia logs               # todos os serviços (Ctrl+C para sair)
-./idia logs ray-head      # Ray Serve + vLLM (inferência)
-./idia logs litellm       # LiteLLM (gateway, auth, routing)
-./idia logs prometheus    # Prometheus (scraping)
-./idia logs grafana       # Grafana (dashboards)
+./base-inference logs               # todos os serviços (Ctrl+C para sair)
+./base-inference logs ray-head      # Ray Serve + vLLM (inferência)
+./base-inference logs litellm       # LiteLLM (gateway, auth, routing)
+./base-inference logs prometheus    # Prometheus (scraping)
+./base-inference logs grafana       # Grafana (dashboards)
 ```
 
 ### 6.4 Métricas de uso LiteLLM
@@ -670,7 +670,7 @@ from openai import OpenAI
 client = OpenAI(
     base_url="http://localhost:4000/v1",      # local
     # base_url="http://<remote-host>:4000/v1",   # acesso remoto
-    api_key="sk-idia-user-a1b2c3d4..."
+    api_key="sk-base-user-a1b2c3d4..."
 )
 
 # Chat completion:
@@ -711,7 +711,7 @@ from langchain_openai import ChatOpenAI
 
 llm = ChatOpenAI(
     base_url="http://localhost:4000/v1",
-    api_key="sk-idia-user-...",
+    api_key="sk-base-user-...",
     model="mistral-7b",
     temperature=0.7
 )
@@ -722,20 +722,20 @@ print(response.content)
 
 ### 7.3 OpenCode / agentes de IA
 
-Para usar o IDIA Server como provider em OpenCode ou outros agentes,
+Para usar o base-inference como provider em OpenCode ou outros agentes,
 configurar como provider OpenAI-compatible:
 
 ```jsonc
 // ~/.config/opencode/opencode.json — adicionar provider:
 {
   "providers": {
-    "idia": {
-      "api_key": "sk-idia-user-...",
+    "base-inference": {
+      "api_key": "sk-base-user-...",
       "base_url": "http://localhost:4000/v1",
-      "name": "IDIA Server (local)"
+      "name": "base-inference (local)"
     }
   },
-  "model": "idia/mistral-7b"
+  "model": "base-inference/mistral-7b"
 }
 ```
 
@@ -743,16 +743,16 @@ configurar como provider OpenAI-compatible:
 
 ```bash
 #!/usr/bin/env bash
-# Exemplo de script de automação usando o IDIA Server
+# Exemplo de script de automação usando o base-inference
 
-IDIA_ENDPOINT="http://localhost:4000"
-IDIA_KEY="sk-idia-user-..."
+BASE_INFERENCE_ENDPOINT="http://localhost:4000"
+BASE_INFERENCE_KEY="sk-base-user-..."
 MODEL="mistral-7b"
 
 query_llm() {
     local prompt="$1"
-    curl -sf "$IDIA_ENDPOINT/v1/chat/completions" \
-        -H "Authorization: Bearer $IDIA_KEY" \
+    curl -sf "$BASE_INFERENCE_ENDPOINT/v1/chat/completions" \
+        -H "Authorization: Bearer $BASE_INFERENCE_KEY" \
         -H "Content-Type: application/json" \
         -d "{
             \"model\": \"$MODEL\",
@@ -779,7 +779,7 @@ MODEL_ID=mistral-7b
 MODEL_SOURCE=mistralai/Mistral-7B-Instruct-v0.3
 
 # Re-deploy:
-./idia stop && ./idia deploy local
+./base-inference stop && ./base-inference deploy local
 
 # Verificar: o volume idia_hf_cache é preservado entre deploys.
 # Se o novo modelo não estiver em cache, será baixado automaticamente.
@@ -791,8 +791,8 @@ MODEL_SOURCE=mistralai/Mistral-7B-Instruct-v0.3
 git pull origin main
 
 # Re-renderizar e reiniciar:
-./idia stop
-./idia deploy local
+./base-inference stop
+./base-inference deploy local
 ```
 
 > **Nota:** Se `Dockerfile.ray` foi atualizado, a imagem será reconstruída
@@ -808,7 +808,7 @@ docker volume ls | grep idia
 docker volume rm idia_hf_cache
 
 # Remover todos os volumes (dados de métricas também):
-./idia stop && docker compose down -v
+./base-inference stop && docker compose down -v
 ```
 
 ### 8.4 Backup das chaves de usuários
@@ -871,8 +871,8 @@ LiteLLM sobe sem saber rotear para o modelo que o `.env` declara.
 
 **Solução:**
 ```bash
-./idia stop
-./idia deploy local   # pré-renderiza antes de subir
+./base-inference stop
+./base-inference deploy local   # pré-renderiza antes de subir
 ```
 
 ### Servidor não sobe após reboot
@@ -890,7 +890,7 @@ journalctl -u base-inference --since "5 minutes ago"
 
 **Solução:** Se `base-inference` não estiver enabled:
 ```bash
-sudo ./idia service install
+sudo ./base-inference service install
 ```
 
 Se `docker` não estiver enabled:
@@ -903,7 +903,7 @@ sudo systemctl enable --now docker
 **Causa A:** Primeiro deploy com modelo grande — download normal.
 ```bash
 # Verificar progresso do download:
-./idia logs ray-head | grep -E "Downloading|Loading|model"
+./base-inference logs ray-head | grep -E "Downloading|Loading|model"
 ```
 
 **Causa B:** `HF_TOKEN` inválido.
@@ -923,7 +923,7 @@ curl -H "Authorization: Bearer $HF_TOKEN" \
 **Causa C:** VRAM insuficiente — vLLM falha com OOM e Ray entra em crashloop.
 ```bash
 # Verificar se há OOM nos logs:
-./idia logs ray-head | grep -iE "out of memory|CUDA error|OOM"
+./base-inference logs ray-head | grep -iE "out of memory|CUDA error|OOM"
 # Se sim: reduzir GPU_MEMORY_UTILIZATION ou usar modelo menor
 ```
 
@@ -947,7 +947,7 @@ curl -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
 # Se retornar 200, a master key funciona.
 
 # Verificar se a virtual key existe:
-./idia user list
+./base-inference user list
 ```
 
 ### 429 Too Many Requests
@@ -959,7 +959,7 @@ curl -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
 **Causa:** No deploy local, Grafana está `Up` mas ainda inicializando.
 ```bash
 docker compose ps grafana        # Checar se está "Up"
-./idia logs grafana | tail -20   # Ver se há erro de startup
+./base-inference logs grafana | tail -20   # Ver se há erro de startup
 ```
 
 **Causa:** Grafana não é exposto externamente — usar túnel SSH:
@@ -967,7 +967,7 @@ docker compose ps grafana        # Checar se está "Up"
 ssh -L 3000:127.0.0.1:3000 user@<host-remoto>
 ```
 
-### Modelo não aparece no `./idia status` (Loaded models vazio)
+### Modelo não aparece no `./base-inference status` (Loaded models vazio)
 
 **Causa:** Ray Serve em `min_replicas: 0` — nenhuma réplica ativa até a
 primeira requisição.

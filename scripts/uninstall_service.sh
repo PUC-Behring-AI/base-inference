@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # =============================================================================
-# uninstall_service.sh — Remove IDIA Server systemd service
+# uninstall_service.sh — Remove base-inference systemd service
 # =============================================================================
 #
 # Stops the service, disables auto-start, and removes the unit file.
-# Must be run as root (called via ``sudo ./idia service uninstall``).
+# Must be run as root (called via ``sudo ./base-inference service uninstall``).
 # =============================================================================
 
 set -euo pipefail
@@ -37,7 +37,7 @@ _warn()  { echo "${YELLOW}[⚠]${RESET} $*"; }
 # ── Pre-flight checks ────────────────────────────────────────────────────────
 
 if [ "$(id -u)" -ne 0 ]; then
-    echo "This script must be run as root. Use:  sudo ./idia service uninstall" >&2
+    echo "This script must be run as root. Use:  sudo ./base-inference service uninstall" >&2
     exit 1
 fi
 
@@ -88,7 +88,7 @@ systemctl daemon-reload
 _info "systemd daemon reloaded"
 
 echo ""
-echo "${GREEN}[✓]${RESET} IDIA Server service uninstalled."
+echo "${GREEN}[✓]${RESET} base-inference service uninstalled."
 echo "    The server will no longer start automatically on boot."
-echo "    Use \`./idia deploy local\` to start manually."
+echo "    Use \`./base-inference deploy local\` to start manually."
 echo ""

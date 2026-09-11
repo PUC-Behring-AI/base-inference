@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# setup_environment.sh — Prepara o ambiente para o IDIA Server
+# setup_environment.sh — Prepara o ambiente para o base-inference
 # =============================================================================
 #
 # Idempotente — seguro rodar múltiplas vezes.
@@ -31,7 +31,7 @@ _step()  { echo ""; echo "${BOLD}[$1]${RESET} $2"; }
 
 echo ""
 echo "${BOLD}${GREEN}══════════════════════════════════════${RESET}"
-echo "${BOLD}${GREEN}  IDIA Server — Environment Setup${RESET}"
+echo "${BOLD}${GREEN}  base-inference — Environment Setup${RESET}"
 echo "${BOLD}${GREEN}══════════════════════════════════════${RESET}"
 echo ""
 
@@ -175,7 +175,7 @@ docker compose version &>/dev/null 2>&1 && PASS=$((PASS+1)) || FAILED="$FAILED d
 python3 --version 2>&1 | grep -qE "3\.1[2-9]" && PASS=$((PASS+1)) || FAILED="$FAILED python3"
 python3 -c "import yaml" 2>/dev/null && PASS=$((PASS+1)) || FAILED="$FAILED pyyaml"
 [ -f "$REPO_DIR/.env" ] && PASS=$((PASS+1)) || FAILED="$FAILED .env"
-bash "$REPO_DIR/idia" --help &>/dev/null 2>&1 && PASS=$((PASS+1)) || FAILED="$FAILED idia"
+bash "$REPO_DIR/base-inference" --help &>/dev/null 2>&1 && PASS=$((PASS+1)) || FAILED="$FAILED base-inference"
 
 echo ""
 if [ $PASS -eq 5 ]; then
@@ -191,7 +191,7 @@ echo "${BOLD}${GREEN}═══════════════════�
 echo ""
 echo "${BOLD}Next steps:${RESET}"
 echo "  1. ${GREEN}nano .env${RESET}                         # Fill in HF_TOKEN + model config"
-echo "  2. ${GREEN}./idia deploy local --dry-run${RESET}     # Validate config"
-echo "  3. ${GREEN}./idia deploy local${RESET}              # Start the server"
-echo "  4. ${GREEN}sudo ./idia service install${RESET}      # Auto-start on boot"
+echo "  2. ${GREEN}./base-inference deploy local --dry-run${RESET}   # Validate config"
+echo "  3. ${GREEN}./base-inference deploy local${RESET}             # Start the server"
+echo "  4. ${GREEN}sudo ./base-inference service install${RESET}     # Auto-start on boot"
 echo ""

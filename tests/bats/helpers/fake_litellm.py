@@ -109,7 +109,7 @@ class _Handler(BaseHTTPRequestHandler):
                 return self._reply({"data": {"keys": matches}})
 
             if not query:
-                # A third shape, for a third caller: `./idia user list` GETs
+                # A third shape, for a third caller: `./base-inference user list` GETs
                 # /key/info with no parameters and reads `.info` as a list.
                 with _LOCK:
                     return self._reply(

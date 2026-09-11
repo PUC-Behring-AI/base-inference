@@ -59,7 +59,7 @@ aqui não existir em disco.
 
 ```
 base-inference/
-├── idia                        ← CLI unificada: deploy, status, user, colleague, service
+├── base-inference               ← CLI unificada: deploy, status, user, colleague, service
 ├── AGENTS.md                   ← este arquivo — regras do projeto para agentes
 ├── README.md                   ← porta de entrada; operação vive no docs/DEPLOY.md
 ├── .env.example                ← template de configuração, sem segredos
@@ -97,7 +97,7 @@ base-inference/
 │   └── bats/                   ← suíte de shell (bats)
 │       ├── colleague_create.bats    ← provisionamento contra LiteLLM falso
 │       ├── colleague_lifecycle.bats ← status, revoke, tiers
-│       ├── idia_cli.bats            ← roteamento, deploy, status, user, logs
+│       ├── base_inference_cli.bats  ← roteamento, deploy, status, user, logs
 │       └── helpers/
 │           ├── common.bash          ← setup: servidor falso, .env, stubs no PATH
 │           ├── fake_litellm.py      ← LiteLLM de mentira, com estado real
@@ -165,7 +165,7 @@ A implementação do templating usa o entrypoint Python `scripts/render_config.p
 
 ## Testing Strategy
 
-O IDIA Server usa **pytest 8.x** como executor. A suíte cobre cinco categorias de teste,
+O base-inference usa **pytest 8.x** como executor. A suíte cobre cinco categorias de teste,
 cada uma com seu marcador e requisitos de infraestrutura.
 
 ### Categorias de Teste
@@ -199,7 +199,7 @@ inteira quando esquecidas:
   apaga antes de rodar; à mão, `rm -f .coverage .coverage.*`.
 
 A cobertura mede só o Python, que é **um terço** do código executável deste
-repositório — `idia`, `colleague.sh` e `setup_environment.sh` somam mais
+repositório — `base-inference`, `colleague.sh` e `setup_environment.sh` somam mais
 linhas que `render_config.py`. Um relatório de 100% não afirma nada sobre
 eles. O shell tem suíte funcional própria (`tests/bats/`), e **não** tem
 número de cobertura: medir linha de shell exige `kcov` ou `bashcov`, nenhum
@@ -233,8 +233,8 @@ Como ela consegue rodar sem infraestrutura:
   subcomandos usados. As asserções são sobre a linha de comando que o script
   *montaria* — é ali que os defeitos moram (um serviço que falta, uma flag de
   profile que nunca é passada).
-- **`./idia` roda a partir de uma cópia temporária do repositório.**
-  `colleague.sh` tem a costura para isso (`IDIA_ENV_FILE`); `./idia` não —
+- **`./base-inference` roda a partir de uma cópia temporária do repositório.**
+  `colleague.sh` tem a costura para isso (`BASE_INFERENCE_ENV_FILE`); `./base-inference` não —
   fixa `ENV_FILE="$REPO_DIR/.env"`. Os scripts são **copiados, não
   linkados**: `render_config.py` deriva a raiz de
   `Path(__file__).resolve().parent`, e `resolve()` segue o link de volta ao

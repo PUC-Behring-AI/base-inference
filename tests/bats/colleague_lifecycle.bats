@@ -67,8 +67,8 @@ assert_contains() {
 }
 
 @test "tiers on an .env with no model is refused" {
-    grep -v '^MODEL_ID=' "$IDIA_ENV_FILE" >"${IDIA_ENV_FILE}.tmp"
-    mv "${IDIA_ENV_FILE}.tmp" "$IDIA_ENV_FILE"
+    grep -v '^MODEL_ID=' "$BASE_INFERENCE_ENV_FILE" >"${BASE_INFERENCE_ENV_FILE}.tmp"
+    mv "${BASE_INFERENCE_ENV_FILE}.tmp" "$BASE_INFERENCE_ENV_FILE"
     run colleague tiers
     assert_fails
     assert_contains "Nenhum modelo configurado"
@@ -86,16 +86,16 @@ assert_contains() {
     # A down Open WebUI must not stop the LiteLLM half from being reported:
     # the operator asking for status is usually asking *because* something
     # is down.
-    run colleague status ana@idia.org
+    run colleague status ana@example.org
     assert_ok
     assert_contains "não está no ar"
     assert_contains "LiteLLM"
 }
 
 @test "status reports an existing key's budget and spend" {
-    run colleague key ana@idia.org
+    run colleague key ana@example.org
     assert_ok
-    run colleague status ana@idia.org
+    run colleague status ana@example.org
     assert_ok
     assert_contains "Alias:"
     assert_contains "ana"
@@ -103,21 +103,21 @@ assert_contains() {
 }
 
 @test "status says so when the alias has no key" {
-    run colleague status ninguem@idia.org
+    run colleague status ninguem@example.org
     assert_ok
     assert_contains "nenhuma key encontrada"
 }
 
 @test "status survives an unreachable LiteLLM with a warning" {
     write_env "LITELLM_PORT=1"
-    run colleague status ana@idia.org
+    run colleague status ana@example.org
     assert_ok
     assert_contains "LiteLLM indisponível"
 }
 
 @test "status queries Open WebUI when the container is present" {
     export FAKE_DOCKER_CONTAINERS="idia-webui-test"
-    run colleague status ana@idia.org
+    run colleague status ana@example.org
     assert_ok
     run bash -c "grep -c exec '$FAKE_DOCKER_LOG'"
     [ "$output" -ge 1 ]
@@ -133,33 +133,33 @@ assert_contains() {
 
 @test "revoke deletes the LiteLLM key and reports how many" {
     export FAKE_DOCKER_CONTAINERS="idia-webui-test"
-    run colleague key ana@idia.org
+    run colleague key ana@example.org
     assert_ok
-    run colleague revoke ana@idia.org
+    run colleague revoke ana@example.org
     assert_ok
     assert_contains "revogada"
     # And the key is really gone: a second revoke finds nothing.
-    run colleague revoke ana@idia.org
+    run colleague revoke ana@example.org
     assert_ok
     assert_contains "Nenhuma key LiteLLM"
 }
 
 @test "revoke says so when there was nothing to revoke" {
     export FAKE_DOCKER_CONTAINERS="idia-webui-test"
-    run colleague revoke ninguem@idia.org
+    run colleague revoke ninguem@example.org
     assert_ok
     assert_contains "Nenhuma key LiteLLM"
 }
 
 @test "revoke leaves other aliases' keys alone" {
     export FAKE_DOCKER_CONTAINERS="idia-webui-test"
-    run colleague key ana@idia.org
+    run colleague key ana@example.org
     assert_ok
-    run colleague key bruno@idia.org
+    run colleague key bruno@example.org
     assert_ok
-    run colleague revoke ana@idia.org
+    run colleague revoke ana@example.org
     assert_ok
-    run colleague status bruno@idia.org
+    run colleague status bruno@example.org
     assert_ok
     assert_contains "bruno"
 }
@@ -168,7 +168,7 @@ assert_contains() {
     # It refuses *after* deleting the LiteLLM keys — so the account survives
     # with no key. Recorded here as the behaviour that exists, with the
     # ordering problem tracked as an issue rather than fixed in a test diff.
-    run colleague revoke ana@idia.org
+    run colleague revoke ana@example.org
     assert_fails
     assert_contains "idia-webui-test"
 }
@@ -176,7 +176,7 @@ assert_contains() {
 @test "revoke fails loudly when the Open WebUI call fails" {
     export FAKE_DOCKER_CONTAINERS="idia-webui-test"
     export FAKE_DOCKER_FAIL="exec"
-    run colleague revoke ana@idia.org
+    run colleague revoke ana@example.org
     assert_fails
     assert_contains "Falha ao remover"
 }
@@ -201,10 +201,10 @@ assert_contains() {
     assert_contains "Uso:"
 }
 
-@test "IDIA_PROG renames the program in usage messages" {
-    # ./idia sets this so the usage text says "./idia colleague", not
+@test "BASE_INFERENCE_PROG renames the program in usage messages" {
+    # ./base-inference sets this so the usage text says "./base-inference colleague", not
     # "colleague.sh" — a path the user never types.
-    IDIA_PROG="./idia colleague" run colleague status
+    BASE_INFERENCE_PROG="./base-inference colleague" run colleague status
     assert_fails
-    assert_contains "./idia colleague"
+    assert_contains "./base-inference colleague"
 }

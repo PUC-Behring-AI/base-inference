@@ -1008,7 +1008,7 @@ class TestMainRenderAll:
         self, env: dict[str, str], monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
         repo_template: Path, capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """``./idia deploy local`` depends on both files landing before compose up."""
+        """``./base-inference deploy local`` depends on both files landing before compose up."""
         env.update(SINGLE)
         fake_scripts = tmp_path / "scripts"
         fake_scripts.mkdir()
@@ -1056,7 +1056,7 @@ class TestMainNormalMode:
     ) -> None:
         env.update(SINGLE)
         monkeypatch.setattr(sys, "argv", ["render_config.py"])
-        target = tmp_path / "idia_serve_config.yaml"
+        target = tmp_path / "base_inference_serve_config.yaml"
         monkeypatch.setattr("scripts.render_config.RENDERED_PATH", target)
 
         seen: list[tuple[str, ...]] = []

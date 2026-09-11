@@ -1,4 +1,4 @@
-"""Security constraint validation tests for IDIA Server.
+"""Security constraint validation tests for base-inference.
 
 These tests verify that the deployment artifacts respect the security
 boundaries defined in docs/ARCHITECTURE.md §9, without requiring a

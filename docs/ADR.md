@@ -1,7 +1,7 @@
 # ADR.md — Architecture Decision Records
 
 Este documento registra as principais decisões arquiteturais tomadas durante
-o desenvolvimento do IDIA Server. Cada entrada descreve o problema, a decisão
+o desenvolvimento do base-inference. Cada entrada descreve o problema, a decisão
 tomada, as alternativas consideradas e as consequências.
 
 A manutenção deste documento segue as regras estabelecidas no
@@ -193,7 +193,7 @@ alertas; - alertas não são versionados como código (configurados via UI),
 ## ADR-008: Licença Apache 2.0
 **Data:** 2026-06-28 | **Fase:** 5 | **Status:** Accepted
 
-**Contexto:** O IDIA Server foi desenvolvido no PUC-Behring Institute for AI,
+**Contexto:** O base-inference foi desenvolvido no PUC-Behring Institute for AI,
 uma instituição de pesquisa brasileira. O repositório é público e precisa
 de uma licença que proteja a instituição e incentive o uso acadêmico e
 comercial.
@@ -330,7 +330,7 @@ Três propriedades foram escolhidas deliberadamente:
   sobrenome com apóstrofo produzia `SyntaxError` no meio do provisionamento,
   deixando uma key órfã. Os heredocs usam delimitador entre aspas (`<<'PY'`),
   então o bash não expande nada dentro deles.
-- **Nenhum segredo ou endereço no código.** `IDIA_PUBLIC_HOST` e
+- **Nenhum segredo ou endereço no código.** `BASE_INFERENCE_PUBLIC_HOST` e
   `OWUI_DISCOVERY_KEY` vêm do `.env`. A versão anterior carregava ambos como
   literais, prestes a serem publicados no primeiro push.
 - **Sem arrays associativos.** Os tiers são um `case`, não `declare -A`, para
@@ -349,7 +349,7 @@ de pessoas, não milhares.
 resíduo; + testável sem Docker e sem servidor (`--dry-run`, `tiers`);
 − manipulação direta do SQLite do Open WebUI (ver ADR-009)]
 
-**Atualização (issue #6):** `create_user.sh` foi removido e o `./idia user create` passou a delegar para `colleague.sh key`. Havia dois vocabulários de tier — `hard/regular/light` e `light/regular/heavy/classroom` — com limites diferentes para o mesmo nome, e o primeiro não aplicava limite nenhum. Agora existe uma definição só. `hard` continua sendo aceito como sinônimo de `heavy`, com aviso.
+**Atualização (issue #6):** `create_user.sh` foi removido e o `./base-inference user create` passou a delegar para `colleague.sh key`. Havia dois vocabulários de tier — `hard/regular/light` e `light/regular/heavy/classroom` — com limites diferentes para o mesmo nome, e o primeiro não aplicava limite nenhum. Agora existe uma definição só. `hard` continua sendo aceito como sinônimo de `heavy`, com aviso.
 
 ---
 
@@ -440,7 +440,7 @@ todos os usuários e o histórico de gasto, e perdê-lo é perder ambos. Um
 **Contexto:** A interface que todos os usuários do instituto abrem existia
 apenas como um `docker run` copiado de um bloco da documentação. Fora do
 Compose, ela não tinha healthcheck, não reiniciava sozinha, não aparecia em
-`./idia status`, não parava com `./idia stop`, e seu volume não estava
+`./base-inference status`, não parava com `./base-inference stop`, e seu volume não estava
 declarado. Reiniciar a máquina trazia tudo de volta menos a interface.
 
 Havia um segundo problema mais silencioso: a rede do `docker run` era
@@ -466,7 +466,7 @@ não convenção implícita.
 
 `ENABLE_SIGNUP=false`: uma conta auto-registrada não tem virtual key nem
 `access_grant`, então o usuário entra e encontra um dropdown vazio. Contas
-nascem pelo `./idia colleague create`, que é o que amarra as três coisas.
+nascem pelo `./base-inference colleague create`, que é o que amarra as três coisas.
 
 **A porta 3001 é publicada, e isso é uma exceção consciente à §9.1.** A regra
 "só a 4000 é externa" foi escrita quando o único cliente era um SDK. A
@@ -482,7 +482,7 @@ que produziu os problemas acima; documentar melhor não faz o container
 reiniciar depois de um reboot.
 
 **Consequências:** [+ a interface entra no ciclo de vida da stack;
-+ `./idia stop` e `./idia status` passam a enxergá-la; + o volume é
++ `./base-inference stop` e `./base-inference status` passam a enxergá-la; + o volume é
 declarado e sobrevive a `docker compose down`; − uma segunda porta externa,
 sem TLS por padrão; − o `colleague.sh` fica acoplado ao nome do container,
 agora ao menos declarado em um lugar só]

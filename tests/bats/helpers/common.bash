@@ -5,7 +5,7 @@
 # port, and tests/bats/helpers/bin first on PATH so `docker` is the stub.
 #
 # Nothing here touches the operator's real .env or a real container: the
-# scripts under test accept IDIA_ENV_FILE, and the .env we write points
+# scripts under test accept BASE_INFERENCE_ENV_FILE, and the .env we write points
 # LITELLM_PORT at the fake server.
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
@@ -114,15 +114,15 @@ json_field() {
 # ── Throwaway .env ───────────────────────────────────────────────────────────
 
 # write_env [extra lines...] — writes $BATS_TEST_TMPDIR/.env and exports
-# IDIA_ENV_FILE. Call after start_litellm so LITELLM_PORT is known.
+# BASE_INFERENCE_ENV_FILE. Call after start_litellm so LITELLM_PORT is known.
 write_env() {
     ENV_FILE="${BATS_TEST_TMPDIR}/.env"
-    export IDIA_ENV_FILE="$ENV_FILE"
+    export BASE_INFERENCE_ENV_FILE="$ENV_FILE"
     {
         echo "LITELLM_MASTER_KEY=sk-test-master-key"
         echo "MODEL_ID=mistral-7b"
         echo "MODEL_SOURCE=mistralai/Mistral-7B-Instruct-v0.3"
-        echo "IDIA_PUBLIC_HOST=idia.example.org"
+        echo "BASE_INFERENCE_PUBLIC_HOST=base-inference.example.org"
         echo "OWUI_CONTAINER=idia-webui-test"
         [ -n "${LITELLM_PORT:-}" ] && echo "LITELLM_PORT=${LITELLM_PORT}"
         local line
@@ -138,13 +138,13 @@ colleague() {
     bash "${REPO_ROOT}/scripts/colleague.sh" "$@"
 }
 
-# ── A throwaway copy of the repo, for testing ./idia ─────────────────────────
+# ── A throwaway copy of the repo, for testing ./base-inference ───────────────
 #
-# colleague.sh has a seam for this — IDIA_ENV_FILE — and ./idia does not: it
-# hardcodes ENV_FILE="$REPO_DIR/.env". Testing its env-dependent paths in
-# place would mean writing a .env into the working copy, on top of whatever
-# the operator has there. So the tests run ./idia out of a temp directory
-# instead.
+# colleague.sh has a seam for this — BASE_INFERENCE_ENV_FILE — and
+# ./base-inference does not: it hardcodes ENV_FILE="$REPO_DIR/.env". Testing
+# its env-dependent paths in place would mean writing a .env into the working
+# copy, on top of whatever the operator has there. So the tests run
+# ./base-inference out of a temp directory instead.
 #
 # The scripts are COPIED, not symlinked, on purpose: render_config.py derives
 # the repo root from Path(__file__).resolve().parent, and resolve() follows a
@@ -153,20 +153,20 @@ colleague() {
 make_fake_repo() {
     FAKE_REPO="${BATS_TEST_TMPDIR}/repo"
     mkdir -p "$FAKE_REPO"
-    cp "${REPO_ROOT}/idia" "$FAKE_REPO/idia"
+    cp "${REPO_ROOT}/base-inference" "$FAKE_REPO/base-inference"
     cp -R "${REPO_ROOT}/scripts" "$FAKE_REPO/scripts"
     cp "${REPO_ROOT}/docker-compose.yml" "$FAKE_REPO/docker-compose.yml"
     cp "${REPO_ROOT}/serve_config.yaml" "$FAKE_REPO/serve_config.yaml"
     export FAKE_REPO
 
-    # ./idia reads $REPO_DIR/.env, so the file has to live in the copy.
+    # ./base-inference reads $REPO_DIR/.env, so the file has to live in the copy.
     ENV_FILE="${FAKE_REPO}/.env"
-    export IDIA_ENV_FILE="$ENV_FILE"
+    export BASE_INFERENCE_ENV_FILE="$ENV_FILE"
     {
         echo "LITELLM_MASTER_KEY=sk-test-master-key"
         echo "MODEL_ID=mistral-7b"
         echo "MODEL_SOURCE=mistralai/Mistral-7B-Instruct-v0.3"
-        echo "IDIA_PUBLIC_HOST=idia.example.org"
+        echo "BASE_INFERENCE_PUBLIC_HOST=base-inference.example.org"
         echo "OWUI_CONTAINER=idia-webui-test"
         [ -n "${LITELLM_PORT:-}" ] && echo "LITELLM_PORT=${LITELLM_PORT}"
         local line
@@ -176,6 +176,6 @@ make_fake_repo() {
     } >"$ENV_FILE"
 }
 
-idia() {
-    bash "${FAKE_REPO:-$REPO_ROOT}/idia" "$@"
+base_inference() {
+    bash "${FAKE_REPO:-$REPO_ROOT}/base-inference" "$@"
 }
