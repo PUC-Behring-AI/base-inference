@@ -958,7 +958,7 @@
   "timepicker": {},
   "timezone": "browser",
   "title": "vLLM Dashboard",
-  "uid": "idia-vllm-dashboard",
+  "uid": "base-inference-vllm-dashboard",
   "version": 1,
   "gnetId": 25043,
   "description": "vLLM Dashboard from official production-stack (grafana.com/dashboards/25043)"

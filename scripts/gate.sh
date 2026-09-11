@@ -82,7 +82,7 @@ _ok "suíte de shell verde"
 # ── 3. Sintaxe dos scripts shell ────────────────────────────────────────────
 
 _step "sintaxe shell"
-shell_files=(idia)
+shell_files=(base-inference)
 while IFS= read -r f; do shell_files+=("$f"); done < <(find scripts -name '*.sh' -type f | sort)
 # Os helpers do bats também são bash, e um erro de sintaxe neles reprova a
 # suíte inteira por um motivo que não tem nada a ver com o código sob teste.

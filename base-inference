@@ -1,44 +1,44 @@
 #!/usr/bin/env bash
 # =============================================================================
-# IDIA Server — Unified Operations CLI
+# base-inference — Unified Operations CLI
 # =============================================================================
 #
 # Single entry point for all server operations. The maintainer's interface
-# for deploying, monitoring, and managing the IDIA Server.
+# for deploying, monitoring, and managing base-inference.
 #
 # Usage:
-#   ./idia setup                          Setup environment (Docker Compose, Python, .env)
-#   ./idia deploy local [--dry-run] [--no-wait]  Start server locally (Docker Compose)
-#                                                --dry-run: validate config only
-#                                                --no-wait: skip health check (for systemd boot)
-#   ./idia service install              Install systemd service (auto-start on boot)
-#   ./idia service uninstall            Remove systemd service
-#   ./idia service status               Show systemd or compose status
-#   ./idia status                       Show service health + loaded models
-#   ./idia user create <name> <tier>    Create a user virtual key
-#   ./idia user list                    List all active virtual keys
-#   ./idia colleague create <email> <name>  Create key + Open WebUI account (linked)
-#   ./idia colleague status <email>     Show a colleague's key, grants and spend
-#   ./idia colleague revoke <email>     Revoke access and clean up every artefact
-#   ./idia colleague tiers              Show tier definitions and granted models
-#   ./idia logs [service]               Show service logs (all or specific)
-#   ./idia stop                         Stop all local services
-#   ./idia --help                       This message
+#   ./base-inference setup                                 Setup environment (Docker Compose, Python, .env)
+#   ./base-inference deploy local [--dry-run] [--no-wait]  Start server locally (Docker Compose)
+#                                                          --dry-run: validate config only
+#                                                          --no-wait: skip health check (for systemd boot)
+#   ./base-inference service install                       Install systemd service (auto-start on boot)
+#   ./base-inference service uninstall                     Remove systemd service
+#   ./base-inference service status                        Show systemd or compose status
+#   ./base-inference status                                Show service health + loaded models
+#   ./base-inference user create <name> <tier>             Create a user virtual key
+#   ./base-inference user list                             List all active virtual keys
+#   ./base-inference colleague create <email> <name>       Create key + Open WebUI account (linked)
+#   ./base-inference colleague status <email>              Show a colleague's key, grants and spend
+#   ./base-inference colleague revoke <email>              Revoke access and clean up every artefact
+#   ./base-inference colleague tiers                       Show tier definitions and granted models
+#   ./base-inference logs [service]                        Show service logs (all or specific)
+#   ./base-inference stop                                  Stop all local services
+#   ./base-inference --help                                This message
 #
-# Tier levels (see ./idia colleague tiers for the authoritative list):
+# Tier levels (see ./base-inference colleague tiers for the authoritative list):
 #   light      $0.50/day, 10 RPM  (visitor, intern)
 #   regular    $2/day,    60 RPM  (researcher, daily use)
 #   heavy      $10/day,   no RPM cap (senior researcher)
 #   classroom  $20/day,  300 RPM  (30+ students)
 #
 # Examples:
-#   ./idia deploy local                     # Start server (first time: ~15 min)
-#   ./idia deploy local --dry-run           # Validate config without starting
-#   ./idia user create alice heavy          # API key only, senior researcher tier
-#   ./idia colleague create ana@idia.org "Ana"   # Key + Open WebUI account
-#   ./idia status                           # Check everything is healthy
-#   ./idia logs litellm                     # Debug LiteLLM issues
-#   ./idia stop                             # Shut down server
+#   ./base-inference deploy local                             # Start server (first time: ~15 min)
+#   ./base-inference deploy local --dry-run                   # Validate config without starting
+#   ./base-inference user create alice heavy                  # API key only, senior researcher tier
+#   ./base-inference colleague create ana@example.org "Ana"   # Key + Open WebUI account
+#   ./base-inference status                                   # Check everything is healthy
+#   ./base-inference logs litellm                             # Debug LiteLLM issues
+#   ./base-inference stop                                     # Shut down server
 #
 # See docs/ARCHITECTURE.md for architecture details.
 # See README.md for the full operations guide.
@@ -77,7 +77,7 @@ _help() {
     sed -n 's/^# //p; /^# =/d; /^#$/d' "$0" 2>/dev/null || true
     echo ""
     echo "${BOLD}Usage:${RESET}"
-    echo "  ./idia <command> [options]"
+    echo "  ./base-inference <command> [options]"
     echo ""
     echo "${BOLD}Commands:${RESET}"
     echo "  ${CYAN}setup${RESET}                             Setup environment (Docker Compose, Python, .env)"
@@ -103,7 +103,7 @@ _step()    { echo "${BOLD}[${1}]${RESET} ${2}"; }
 _banner()  {
     echo ""
     echo "${BOLD}${CYAN}══════════════════════════════════════${RESET}"
-    echo "${BOLD}${CYAN}  IDIA Server — ${1}${RESET}"
+    echo "${BOLD}${CYAN}  base-inference — ${1}${RESET}"
     echo "${BOLD}${CYAN}══════════════════════════════════════${RESET}"
     echo ""
 }
@@ -177,7 +177,7 @@ _wait_for_health() {
 
     echo ""
     _error "Server did not become ready within ${timeout_sec}s"
-    echo "  Check logs with:  ./idia logs"
+    echo "  Check logs with:  ./base-inference logs"
     echo "  Common issues:"
     echo "    - Not enough VRAM for the selected model (check GPU_COUNT, GPU_VRAM_GB)"
     echo "    - HF_TOKEN not set or invalid (model might be gated)"
@@ -217,7 +217,7 @@ _deploy_local() {
         echo "  cat $REPO_DIR/rendered_serve_config.yaml"
         echo "  cat $REPO_DIR/rendered_litellm_config.yaml"
         echo ""
-        echo "To deploy:  ./idia deploy local"
+        echo "To deploy:  ./base-inference deploy local"
         exit 0
     fi
 
@@ -238,8 +238,8 @@ _deploy_local() {
         _info "Services started (--no-wait: containers are booting in background)"
         echo ""
         echo "  ${YELLOW}Note:${RESET} model may take 5-15 min to load on first boot."
-        echo "  Check status with:  ./idia status"
-        echo "  View logs with:     ./idia logs"
+        echo "  Check status with:  ./base-inference status"
+        echo "  View logs with:     ./base-inference logs"
         echo ""
         return 0
     fi
@@ -265,10 +265,10 @@ _deploy_local() {
     echo "  ${BOLD}Grafana:${RESET}       http://localhost:3000  (admin / \$GRAFANA_ADMIN_PASSWORD)"
     echo ""
     echo "${BOLD}Next steps:${RESET}"
-    echo "  ./idia user create alice hard       # Create a user (researcher tier)"
-    echo "  ./idia user create bob  regular     # Create a user (grad student tier)"
-    echo "  ./idia status                       # Check all services"
-    echo "  ./idia logs                         # View logs"
+    echo "  ./base-inference user create alice hard     # Create a user (researcher tier)"
+    echo "  ./base-inference user create bob  regular   # Create a user (grad student tier)"
+    echo "  ./base-inference status                     # Check all services"
+    echo "  ./base-inference logs                       # View logs"
     echo ""
 }
 
@@ -331,9 +331,9 @@ _user_create() {
     local tier="${2:-regular}"
 
     if [ -z "$name" ]; then
-        _error "Usage: ./idia user create <name> <tier>"
+        _error "Usage: ./base-inference user create <name> <tier>"
         echo "  tier options: light | regular | heavy | classroom"
-        echo "  For a full account (key + Open WebUI):  ./idia colleague create <email> <name>"
+        echo "  For a full account (key + Open WebUI):  ./base-inference colleague create <email> <name>"
         exit 1
     fi
 
@@ -343,7 +343,7 @@ _user_create() {
         tier="heavy"
     fi
 
-    IDIA_PROG="./idia user create" exec "$SCRIPTS_DIR/colleague.sh" key "$name" --tier "$tier"
+    BASE_INFERENCE_PROG="./base-inference user create" exec "$SCRIPTS_DIR/colleague.sh" key "$name" --tier "$tier"
 }
 
 _user_list() {
@@ -399,7 +399,7 @@ _stop() {
 _service_install() {
     _banner "Install Systemd Service"
     if [ "$(id -u)" -ne 0 ]; then
-        _error "This command requires root. Run:  sudo ./idia service install"
+        _error "This command requires root. Run:  sudo ./base-inference service install"
         exit 1
     fi
     if ! command -v systemctl &>/dev/null; then
@@ -412,7 +412,7 @@ _service_install() {
 _service_uninstall() {
     _banner "Uninstall Systemd Service"
     if [ "$(id -u)" -ne 0 ]; then
-        _error "This command requires root. Run:  sudo ./idia service uninstall"
+        _error "This command requires root. Run:  sudo ./base-inference service uninstall"
         exit 1
     fi
     "$SCRIPTS_DIR/uninstall_service.sh"
@@ -438,7 +438,7 @@ case "${1:-}" in
             local) _deploy_local "${@:3}" ;;
             *)
                 _error "Unknown deploy target: '${2:-}'"
-                echo "  Use:  ./idia deploy local"
+                echo "  Use:  ./base-inference deploy local"
                 exit 1
                 ;;
         esac
@@ -450,8 +450,8 @@ case "${1:-}" in
             list)   _user_list   "${3:-}" ;;
             *)
                 _error "Unknown user subcommand: '${2:-}'"
-                echo "  Use:  ./idia user create <name> <tier>"
-                echo "  Or:   ./idia user list"
+                echo "  Use:  ./base-inference user create <name> <tier>"
+                echo "  Or:   ./base-inference user list"
                 exit 1
                 ;;
         esac
@@ -460,7 +460,7 @@ case "${1:-}" in
         # Delegates to scripts/colleague.sh — creates the LiteLLM key, the
         # Open WebUI account and the model access grants in one pass.
         shift
-        IDIA_PROG="./idia colleague" exec "$SCRIPTS_DIR/colleague.sh" "$@"
+        BASE_INFERENCE_PROG="./base-inference colleague" exec "$SCRIPTS_DIR/colleague.sh" "$@"
         ;;
     logs)          _logs  "${2:-}" ;;
     stop)          _stop ;;
@@ -471,27 +471,27 @@ case "${1:-}" in
             status)    _service_status ;;
             *)
                 _error "Unknown service subcommand: '${2:-}'"
-                echo "  Use:  ./idia service install"
-                echo "  Or:   ./idia service uninstall"
-                echo "  Or:   ./idia service status"
+                echo "  Use:  ./base-inference service install"
+                echo "  Or:   ./base-inference service uninstall"
+                echo "  Or:   ./base-inference service status"
                 exit 1
                 ;;
         esac
         ;;
     --help|-h|help) _help ;; 
     "")
-        echo "${BOLD}IDIA Server CLI${RESET} — run ${CYAN}./idia --help${RESET} for usage"
+        echo "${BOLD}base-inference CLI${RESET} — run ${CYAN}./base-inference --help${RESET} for usage"
         echo ""
         echo "Quick start:"
-        echo "  ${CYAN}./idia setup${RESET}                        # Setup environment"
-        echo "  ${CYAN}./idia deploy local${RESET}               # Start the server"
-        echo "  ${CYAN}sudo ./idia service install${RESET}      # Auto-start on boot"
-        echo "  ${CYAN}./idia status${RESET}                    # Check health"
-        echo "  ${CYAN}./idia user create alice hard${RESET}    # Add a user"
+        echo "  ${CYAN}./base-inference setup${RESET}                    # Setup environment"
+        echo "  ${CYAN}./base-inference deploy local${RESET}             # Start the server"
+        echo "  ${CYAN}sudo ./base-inference service install${RESET}     # Auto-start on boot"
+        echo "  ${CYAN}./base-inference status${RESET}                   # Check health"
+        echo "  ${CYAN}./base-inference user create alice hard${RESET}   # Add a user"
         ;;
     *)
         _error "Unknown command: '${1}'"
-        echo "  Run:  ./idia --help"
+        echo "  Run:  ./base-inference --help"
         exit 1
         ;;
 esac

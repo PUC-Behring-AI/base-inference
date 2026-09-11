@@ -1,4 +1,4 @@
-"""Shared fixtures for the IDIA Server test suite.
+"""Shared fixtures for the base-inference test suite.
 
 All test categories (docs, config, integration, security) share
 the repo_root fixture. Category-specific fixtures live in the

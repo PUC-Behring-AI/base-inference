@@ -3,7 +3,7 @@
 Tests for:
 - render_config.py --dry-run
 - .env schema parsing
-- ./idia CLI wrapper (subcommands, help, flags)
+- ./base-inference CLI wrapper (subcommands, help, flags)
 """
 
 from __future__ import annotations
@@ -95,19 +95,19 @@ class TestDotEnvSchema:
 
 
 @pytest.mark.config
-class TestIdiaCli:
-    """Verify the ./idia CLI wrapper exists and prints help."""
+class TestBaseInferenceCli:
+    """Verify the ./base-inference CLI wrapper exists and prints help."""
 
-    def test_idia_cli_exists(self, repo_root: Path) -> None:
-        """idia script exists and is executable."""
-        cli = repo_root / "idia"
+    def test_base_inference_cli_exists(self, repo_root: Path) -> None:
+        """base-inference script exists and is executable."""
+        cli = repo_root / "base-inference"
         assert cli.exists()
         assert cli.stat().st_mode & 0o111  # executable
 
-    def test_idia_help_returns_0(self, repo_root: Path) -> None:
-        """idia --help exits with 0 and prints usage."""
+    def test_base_inference_help_returns_0(self, repo_root: Path) -> None:
+        """base-inference --help exits with 0 and prints usage."""
         result = subprocess.run(
-            ["bash", str(repo_root / "idia"), "--help"],
+            ["bash", str(repo_root / "base-inference"), "--help"],
             capture_output=True,
             text=True,
             timeout=15,
@@ -115,10 +115,10 @@ class TestIdiaCli:
         assert result.returncode == 0
         assert "usage" in result.stdout.lower() or "Usage" in result.stdout
 
-    def test_idia_help_shows_subcommands(self, repo_root: Path) -> None:
-        """idia --help lists all expected subcommands."""
+    def test_base_inference_help_shows_subcommands(self, repo_root: Path) -> None:
+        """base-inference --help lists all expected subcommands."""
         result = subprocess.run(
-            ["bash", str(repo_root / "idia"), "--help"],
+            ["bash", str(repo_root / "base-inference"), "--help"],
             capture_output=True,
             text=True,
             timeout=15,
@@ -136,9 +136,9 @@ class TestNoWaitFlag:
     """--no-wait flag is accepted by deploy local."""
 
     def test_no_wait_in_help(self, repo_root: Path) -> None:
-        """./idia --help documents --no-wait."""
+        """./base-inference --help documents --no-wait."""
         result = subprocess.run(
-            ["bash", str(repo_root / "idia"), "--help"],
+            ["bash", str(repo_root / "base-inference"), "--help"],
             capture_output=True, text=True, timeout=15,
         )
         assert "--no-wait" in result.stdout
@@ -152,7 +152,7 @@ class TestNoWaitFlag:
             env_file.rename(env_backup)
         try:
             result = subprocess.run(
-                ["bash", str(repo_root / "idia"), "deploy", "local", "--no-wait"],
+                ["bash", str(repo_root / "base-inference"), "deploy", "local", "--no-wait"],
                 capture_output=True, text=True, timeout=15,
             )
             # Should fail with a known error, not because --no-wait is unknown
@@ -165,12 +165,12 @@ class TestNoWaitFlag:
 
 @pytest.mark.config
 class TestServiceSubcommand:
-    """./idia service subcommands exist and require root."""
+    """./base-inference service subcommands exist and require root."""
 
     def test_service_in_help(self, repo_root: Path) -> None:
-        """./idia --help lists service subcommand."""
+        """./base-inference --help lists service subcommand."""
         result = subprocess.run(
-            ["bash", str(repo_root / "idia"), "--help"],
+            ["bash", str(repo_root / "base-inference"), "--help"],
             capture_output=True, text=True, timeout=15,
         )
         assert "service" in result.stdout.lower()
@@ -178,7 +178,7 @@ class TestServiceSubcommand:
     def test_service_install_requires_root(self, repo_root: Path) -> None:
         """service install fails without root."""
         result = subprocess.run(
-            ["bash", str(repo_root / "idia"), "service", "install"],
+            ["bash", str(repo_root / "base-inference"), "service", "install"],
             capture_output=True, text=True, timeout=15,
             env={"PATH": os.environ.get("PATH", "/usr/bin"), "HOME": os.environ.get("HOME", "/root")},
         )
@@ -188,7 +188,7 @@ class TestServiceSubcommand:
     def test_service_unknown_subcommand(self, repo_root: Path) -> None:
         """Unknown service subcommand gives helpful error."""
         result = subprocess.run(
-            ["bash", str(repo_root / "idia"), "service", "nosuchthing"],
+            ["bash", str(repo_root / "base-inference"), "service", "nosuchthing"],
             capture_output=True, text=True, timeout=15,
         )
         assert result.returncode != 0
@@ -197,12 +197,12 @@ class TestServiceSubcommand:
 
 @pytest.mark.config
 class TestSetupSubcommand:
-    """./idia setup runs the environment setup script."""
+    """./base-inference setup runs the environment setup script."""
 
     def test_setup_in_help(self, repo_root: Path) -> None:
-        """./idia --help documents setup."""
+        """./base-inference --help documents setup."""
         result = subprocess.run(
-            ["bash", str(repo_root / "idia"), "--help"],
+            ["bash", str(repo_root / "base-inference"), "--help"],
             capture_output=True, text=True, timeout=15,
         )
         assert "setup" in result.stdout.lower()
@@ -213,9 +213,9 @@ class TestSetupSubcommand:
         "it refuses to run anywhere else, by design",
     )
     def test_setup_runs(self, repo_root: Path) -> None:
-        """./idia setup exits 0 on an already-configured machine."""
+        """./base-inference setup exits 0 on an already-configured machine."""
         result = subprocess.run(
-            ["bash", str(repo_root / "idia"), "setup"],
+            ["bash", str(repo_root / "base-inference"), "setup"],
             capture_output=True, text=True, timeout=60,
         )
         assert result.returncode == 0
@@ -230,7 +230,7 @@ class TestSetupSubcommand:
         maintainer's own machine and hid real regressions in the noise.
         """
         result = subprocess.run(
-            ["bash", str(repo_root / "idia"), "setup"],
+            ["bash", str(repo_root / "base-inference"), "setup"],
             capture_output=True, text=True, timeout=60,
         )
         assert result.returncode != 0
@@ -243,7 +243,7 @@ class TestHealthEndpointConsistency:
 
     LiteLLM's `/health` requires a bearer token whenever `master_key` is set,
     and it always is. An unauthenticated probe there gets 401, which `curl -sf`
-    reports as failure — so `./idia deploy local` waited out its full 600s
+    reports as failure — so `./base-inference deploy local` waited out its full 600s
     timeout on a server that was healthy the whole time, then blamed VRAM and
     HF_TOKEN. `/health/liveliness` is public.
 
@@ -251,7 +251,7 @@ class TestHealthEndpointConsistency:
     test did not. This asserts all three agree.
     """
 
-    PROBES = ("idia", "scripts/smoke_test.sh", "docker-compose.yml")
+    PROBES = ("base-inference", "scripts/smoke_test.sh", "docker-compose.yml")
 
     # Only LiteLLM's /health needs a token. Open WebUI serves its own /health
     # on 8080 with no auth, so the check is scoped to the gateway.
@@ -280,11 +280,11 @@ class TestHealthEndpointConsistency:
 
     def test_cli_defines_the_endpoint_once(self, repo_root: Path) -> None:
         """One definition, so the next caller cannot pick the wrong one."""
-        source = (repo_root / "idia").read_text(encoding="utf-8")
+        source = (repo_root / "base-inference").read_text(encoding="utf-8")
         assert "LITELLM_HEALTH_URL=" in source
         uses = [
             line
-            for _, line in self._code_lines(repo_root / "idia")
+            for _, line in self._code_lines(repo_root / "base-inference")
             if "/health/liveliness" in line
         ]
         assert len(uses) == 1, (

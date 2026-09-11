@@ -1,11 +1,11 @@
 #!/usr/bin/env bats
-# The ./idia CLI — routing, deploy rendering, status, and the systemd wrappers.
+# The ./base-inference CLI — routing, deploy rendering, status, and the systemd wrappers.
 #
 # Everything runs against a temp copy of the repo (make_fake_repo) with a fake
 # LiteLLM and a stub `docker`, so no test touches the operator's .env, their
 # containers, or their launchd/systemd units.
 #
-# The assertions are mostly about the command line ./idia *builds*: whether
+# The assertions are mostly about the command line ./base-inference *builds*: whether
 # the compose file is passed, whether the GPU profile flag appears, whether a
 # subcommand reaches the script that implements it. That is where this CLI's
 # defects have actually been — a flag that never got passed, a route that
@@ -56,7 +56,7 @@ refute_contains() {
 # ── Help and routing ─────────────────────────────────────────────────────────
 
 @test "help exits zero and lists every top-level command" {
-    run idia --help
+    run base_inference --help
     assert_ok
     for cmd in setup deploy status user colleague logs stop service; do
         assert_contains "$cmd"
@@ -64,47 +64,47 @@ refute_contains() {
 }
 
 @test "no arguments prints help rather than failing silently" {
-    run idia
+    run base_inference
     assert_contains "deploy"
 }
 
 @test "an unknown command is refused" {
-    run idia naoexiste
+    run base_inference naoexiste
     assert_fails
 }
 
 @test "deploy without a target is refused" {
-    run idia deploy
+    run base_inference deploy
     assert_fails
 }
 
 @test "deploy with an unknown target is refused" {
-    run idia deploy marte
+    run base_inference deploy marte
     assert_fails
 }
 
 @test "colleague --help routes through without an unbound variable" {
     # Regression guard: this route used to abort under `set -u` before it
     # reached colleague.sh at all.
-    run idia colleague --help
+    run base_inference colleague --help
     assert_ok
     refute_contains "unbound variable"
 }
 
 @test "user with an unknown subcommand is refused" {
-    run idia user naoexiste
+    run base_inference user naoexiste
     assert_fails
 }
 
 @test "service with an unknown subcommand is refused" {
-    run idia service naoexiste
+    run base_inference service naoexiste
     assert_fails
 }
 
 # ── deploy local --dry-run ───────────────────────────────────────────────────
 
 @test "deploy local --dry-run renders both configs and starts nothing" {
-    run idia deploy local --dry-run
+    run base_inference deploy local --dry-run
     assert_ok
     [ -f "${FAKE_REPO}/rendered_serve_config.yaml" ]
     [ -f "${FAKE_REPO}/rendered_litellm_config.yaml" ]
@@ -115,14 +115,14 @@ refute_contains() {
 }
 
 @test "the rendered litellm config names the configured model" {
-    run idia deploy local --dry-run
+    run base_inference deploy local --dry-run
     assert_ok
     run grep -c "mistral-7b" "${FAKE_REPO}/rendered_litellm_config.yaml"
     assert_ok
 }
 
 @test "the rendered litellm config keeps the master key as an env reference" {
-    run idia deploy local --dry-run
+    run base_inference deploy local --dry-run
     assert_ok
     run grep -c "os.environ/LITELLM_MASTER_KEY" "${FAKE_REPO}/rendered_litellm_config.yaml"
     assert_ok
@@ -132,7 +132,7 @@ refute_contains() {
 
 @test "deploy local fails when the .env is absent, naming the fix" {
     rm -f "${FAKE_REPO}/.env"
-    run idia deploy local --dry-run
+    run base_inference deploy local --dry-run
     assert_fails
     assert_contains "cp .env.example .env"
 }
@@ -140,14 +140,14 @@ refute_contains() {
 @test "deploy local fails when the .env has no model, not halfway through" {
     grep -v '^MODEL_ID=' "${FAKE_REPO}/.env" >"${FAKE_REPO}/.env.tmp"
     mv "${FAKE_REPO}/.env.tmp" "${FAKE_REPO}/.env"
-    run idia deploy local --dry-run
+    run base_inference deploy local --dry-run
     assert_fails
     assert_contains "rendering failed"
 }
 
 @test "a stale render is overwritten rather than reused" {
     echo "stale: true" >"${FAKE_REPO}/rendered_litellm_config.yaml"
-    run idia deploy local --dry-run
+    run base_inference deploy local --dry-run
     assert_ok
     run bash -c "grep -c 'stale' '${FAKE_REPO}/rendered_litellm_config.yaml' || true"
     [ "$output" = "0" ]
@@ -156,7 +156,7 @@ refute_contains() {
 # ── status ───────────────────────────────────────────────────────────────────
 
 @test "status runs with the compose file and does not crash" {
-    run idia status
+    run base_inference status
     assert_ok
     run bash -c "grep -c 'compose -f' '$FAKE_DOCKER_LOG'"
     assert_ok
@@ -167,28 +167,28 @@ refute_contains() {
     # A down proxy must not make `status` itself fail: the operator running it
     # is usually running it *because* something is down, and a non-zero exit
     # here would take the compose listing and the model list down with it.
-    LITELLM_PORT=1 run idia status
+    LITELLM_PORT=1 run base_inference status
     assert_ok
     assert_contains "not reachable"
 }
 
 @test "status reports LiteLLM healthy when it answers" {
     # LITELLM_PORT has to come through the ambient environment, not the .env:
-    # ./idia freezes LITELLM_URL at startup from ${LITELLM_PORT:-4000}, before
+    # ./base-inference freezes LITELLM_URL at startup from ${LITELLM_PORT:-4000}, before
     # _load_env sources the file. See the characterisation test below.
-    LITELLM_PORT="$LITELLM_PORT" run idia status
+    LITELLM_PORT="$LITELLM_PORT" run base_inference status
     assert_ok
     assert_contains "healthy"
 }
 
 @test "LITELLM_PORT set only in the .env is ignored by status" {
-    # Characterisation test, not an endorsement: ./idia computes LITELLM_URL
+    # Characterisation test, not an endorsement: ./base-inference computes LITELLM_URL
     # on line 58 from the ambient environment, and sources the .env on line
     # 136. A port configured in the .env therefore never reaches the health
     # check, which reports the server down while it is up. Tracked as an
     # issue; when it is fixed this test flips to asserting "healthy".
     unset LITELLM_PORT
-    run idia status
+    run base_inference status
     assert_ok
     assert_contains "not reachable"
 }
@@ -196,7 +196,7 @@ refute_contains() {
 # ── user ─────────────────────────────────────────────────────────────────────
 
 @test "user create without a name is refused, offering the real tiers" {
-    run idia user create
+    run base_inference user create
     assert_fails
     for tier in light regular heavy classroom; do
         assert_contains "$tier"
@@ -204,47 +204,47 @@ refute_contains() {
 }
 
 @test "user create delegates to colleague and emits a key" {
-    LITELLM_PORT="$LITELLM_PORT" run idia user create ana@idia.org light
+    LITELLM_PORT="$LITELLM_PORT" run base_inference user create ana@example.org light
     assert_ok
     assert_contains "sk-fake-"
 }
 
 @test "the legacy tier name 'hard' is mapped to 'heavy', out loud" {
-    LITELLM_PORT="$LITELLM_PORT" run idia user create ana@idia.org hard
+    LITELLM_PORT="$LITELLM_PORT" run base_inference user create ana@example.org hard
     assert_ok
     assert_contains "heavy"
 }
 
 @test "user create defaults to the regular tier" {
-    LITELLM_PORT="$LITELLM_PORT" run idia user create ana@idia.org
+    LITELLM_PORT="$LITELLM_PORT" run base_inference user create ana@example.org
     assert_ok
     body="$(litellm_body_for /key/generate)"
     [ "$(json_field "$body" team_id)" = "regular" ]
 }
 
 @test "user list warns and fails when the proxy is unreachable" {
-    LITELLM_PORT=1 run idia user list
+    LITELLM_PORT=1 run base_inference user list
     assert_fails
     assert_contains "Could not fetch key list"
 }
 
 @test "user list shows the aliases that exist" {
-    LITELLM_PORT="$LITELLM_PORT" run idia user create ana@idia.org light
+    LITELLM_PORT="$LITELLM_PORT" run base_inference user create ana@example.org light
     assert_ok
-    LITELLM_PORT="$LITELLM_PORT" run idia user list
+    LITELLM_PORT="$LITELLM_PORT" run base_inference user list
     assert_ok
     assert_contains "ana"
 }
 
 @test "user list accepts an explicit endpoint" {
-    run idia user list "http://127.0.0.1:${LITELLM_PORT}"
+    run base_inference user list "http://127.0.0.1:${LITELLM_PORT}"
     assert_ok
 }
 
 # ── logs and stop ────────────────────────────────────────────────────────────
 
 @test "stop brings the stack down through compose" {
-    run idia stop
+    run base_inference stop
     assert_ok
     run bash -c "grep -c 'compose -f.*down' '$FAKE_DOCKER_LOG'"
     assert_ok
@@ -252,20 +252,20 @@ refute_contains() {
 }
 
 @test "stop tells the operator that volumes survive" {
-    run idia stop
+    run base_inference stop
     assert_ok
     assert_contains "volumes"
 }
 
 @test "logs without a service tails everything" {
-    run idia logs
+    run base_inference logs
     assert_ok
     run bash -c "grep -c 'compose -f.*logs -f$' '$FAKE_DOCKER_LOG'"
     assert_ok
 }
 
 @test "logs with a service tails just that one" {
-    run idia logs litellm
+    run base_inference logs litellm
     assert_ok
     run bash -c "grep -c 'logs -f litellm' '$FAKE_DOCKER_LOG'"
     assert_ok
@@ -278,7 +278,7 @@ refute_contains() {
     # service was never installed — it reports the containers instead of
     # failing. Worth pinning: the fallback is silent, so a reader of the
     # output cannot tell which of the two questions was answered.
-    run idia service status
+    run base_inference service status
     assert_ok
     run bash -c "grep -c 'compose -f.*ps' '$FAKE_DOCKER_LOG'"
     assert_ok

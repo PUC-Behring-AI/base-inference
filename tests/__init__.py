@@ -1,1 +1,1 @@
-# IDIA Server test suite.
+# base-inference test suite.

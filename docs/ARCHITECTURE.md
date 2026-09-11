@@ -360,7 +360,7 @@ migração.
   `admin:admin` embutido.
 - **Retenção do Prometheus** em 15 dias / 5 GB, via `command` e não pelo
   arquivo de config, para manter o `prometheus.yml` focado em scrape.
-- **DCGM sob `profiles: ["gpu"]`**, ativado por `--profile gpu`. O `./idia`
+- **DCGM sob `profiles: ["gpu"]`**, ativado por `--profile gpu`. O `./base-inference`
   detecta `nvidia-smi` e adiciona a flag sozinho, então macOS e CI pulam o
   serviço em vez de falhar.
 
@@ -456,7 +456,7 @@ on `serve_config.yaml` before delegating to Ray Serve.
 7. Validate rendered YAML: parse with `yaml.safe_load`, verify structural
    keys (`applications`, `llm_configs`, each entry with non-empty
    `model_id` and `model_source`).
-8. Write rendered YAML to a deterministic path (`/tmp/idia_serve_config.yaml`,
+8. Write rendered YAML to a deterministic path (`/tmp/base_inference_serve_config.yaml`,
    overwritten on each run) — replaces the previous `NamedTemporaryFile`
    approach that leaked files on `os.execlp` (BUG-03).
 9. `exec serve run` on the rendered file (replaces the Python process).
@@ -478,7 +478,7 @@ LiteLLM como um backend OpenAI-compatível qualquer, e é um serviço do
 `docker-compose.yml` como os demais: healthcheck, `restart: unless-stopped`,
 limite de memória, volume nomeado, e `depends_on: litellm` com
 `condition: service_healthy`. Sobe e para com o resto da stack, e aparece em
-`./idia status`.
+`./base-inference status`.
 
 O nome do container é fixo (`idia-webui`, configurável por `OWUI_CONTAINER`)
 porque o `colleague.sh` acessa o SQLite dentro dele para criar contas e
@@ -497,7 +497,7 @@ de usuário, e nunca deve aparecer no código.
 
 `ENABLE_SIGNUP=false`: uma conta criada pelo próprio usuário não tem virtual
 key nem `access_grant`, e encontra um dropdown vazio. Contas nascem pelo
-`./idia colleague create`.
+`./base-inference colleague create`.
 
 **Visibilidade por tier.** Cada modelo tem uma entrada na tabela `model` com
 `base_model_id = NULL`, e cada pessoa recebe um `access_grant` por modelo
@@ -514,7 +514,7 @@ contabilizado individualmente no LiteLLM.
 Um comando cria a pessoa inteira:
 
 ```bash
-./idia colleague create joao@idia.org "João Silva" --tier regular
+./base-inference colleague create joao@example.org "João Silva" --tier regular
 ```
 
 Seis passos: limpa chaves antigas do mesmo alias, cria a virtual key, cria
@@ -582,7 +582,7 @@ curl -X POST http://localhost:4000/chat/completions \
 ### 6.4 Local-specific considerations
 
 - **Adding a GPU**: install the card, confirm with `nvidia-smi` on the host, `docker compose restart ray-head`. No file edit required — Ray re-enumerates devices on restart (§3.3).
-- **Boot-time startup**: install a systemd unit with `sudo ./idia service install`. The unit runs `docker compose up -d` via `./idia deploy local --no-wait` after Docker is ready. Docker's `restart: unless-stopped` handles individual container recovery; systemd ensures the stack comes back after `docker compose down` + reboot.
+- **Boot-time startup**: install a systemd unit with `sudo ./base-inference service install`. The unit runs `docker compose up -d` via `./base-inference deploy local --no-wait` after Docker is ready. Docker's `restart: unless-stopped` handles individual container recovery; systemd ensures the stack comes back after `docker compose down` + reboot.
 - **No node-level autoscaler locally**: the cluster autoscaler (§3.2) never activates on a fixed box; capacity is bounded by the physical GPUs in the machine.
 - **Power/thermal**: sustained inference behaves like sustained training for thermal purposes; verify airflow for multi-hour runs.
 - **Dashboard access**: do not map port 8265 to the host. Use `docker compose exec -it ray-head bash` and curl `localhost:8265` from inside the container, or a temporary `ssh -L` tunnel from a machine on the same private network (§9.2).
@@ -863,7 +863,7 @@ artifacts exist.
 | `tests/test_config_schemas.py` | 1, 4 | `config` | YAML schema validation for `serve_config.yaml`, `docker-compose.yml`, `config.yaml`, `prometheus.yml`, `.env.example`; Grafana datasource provisioning config |
 | `tests/test_integration.py` | 2 | `integration` | `render_config.py` env var substitution (required/optional), dry-run mode, error paths; Compose consistency (build source, image pinning, env var propagation) |
 | `tests/test_security.py` | 2, 4 | `security` | Port isolation (only 4000 externally accessible), image pinning (no `:latest`), trust boundaries (master key declared), dashboard binding. Phase 4: Prometheus port (9090) not published, Grafana bound to 127.0.0.1 |
-| `tests/test_deploy_dry_run.py` | 1 | `config` | Dry-run validation: `render_config.py --dry-run`, `.env.example` schema, `./idia` CLI wrapper, `--no-wait` flag, service/setup subcommands |
+| `tests/test_deploy_dry_run.py` | 1 | `config` | Dry-run validation: `render_config.py --dry-run`, `.env.example` schema, `./base-inference` CLI wrapper, `--no-wait` flag, service/setup subcommands |
 
 | `tests/test_contract.py` | 5 | (none) | LiteLLM API contract tests via mock HTTP server: model not found, missing auth, invalid messages, response format |
 

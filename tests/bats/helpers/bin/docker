@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# A stand-in `docker`, enough of one to drive colleague.sh and ./idia.
+# A stand-in `docker`, enough of one to drive colleague.sh and ./base-inference.
 #
 # Placed first on PATH by tests/bats/helpers/common.bash. It records every
 # invocation so a test can assert on what the script *would* have run, and
@@ -53,7 +53,7 @@ case "$sub" in
         exit 0
         ;;
     compose)
-        # ./idia deploy/status/logs/stop shell out to `docker compose`.
+        # ./base-inference deploy/status/logs/stop shell out to `docker compose`.
         # Answering 0 without doing anything is the point: the test asserts on
         # the recorded command line, which is where the defects live (a
         # missing service, a profile flag that never gets passed).

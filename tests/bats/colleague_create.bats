@@ -68,25 +68,25 @@ has_field() {
 # ── The key gets emitted ─────────────────────────────────────────────────────
 
 @test "create --no-openwebui emits a virtual key" {
-    run colleague create ana@idia.org "Ana Costa" --no-openwebui
+    run colleague create ana@example.org "Ana Costa" --no-openwebui
     assert_ok
     assert_contains "sk-fake-"
 }
 
 @test "create --no-openwebui reports the configured public host, not localhost" {
-    run colleague create ana@idia.org "Ana Costa" --no-openwebui
+    run colleague create ana@example.org "Ana Costa" --no-openwebui
     assert_ok
-    assert_contains "idia.example.org"
+    assert_contains "base-inference.example.org"
 }
 
 @test "create actually posts to /key/generate" {
-    run colleague create ana@idia.org "Ana Costa" --no-openwebui
+    run colleague create ana@example.org "Ana Costa" --no-openwebui
     assert_ok
     [ -n "$(litellm_body_for /key/generate)" ]
 }
 
 @test "the alias is the local part of the email" {
-    run colleague create ana.costa@idia.org "Ana Costa" --no-openwebui
+    run colleague create ana.costa@example.org "Ana Costa" --no-openwebui
     assert_ok
     body="$(litellm_body_for /key/generate)"
     [ "$(field "$body" key_alias)" = "ana.costa" ]
@@ -95,7 +95,7 @@ has_field() {
 # ── Tier limits reach the proxy ──────────────────────────────────────────────
 
 @test "regular tier sends its own budget, rpm and tpm" {
-    run colleague create ana@idia.org "Ana" --no-openwebui
+    run colleague create ana@example.org "Ana" --no-openwebui
     assert_ok
     body="$(litellm_body_for /key/generate)"
     [ "$(field "$body" max_budget)" = "2.0" ]
@@ -106,7 +106,7 @@ has_field() {
 }
 
 @test "light tier sends its own limits" {
-    run colleague create ana@idia.org "Ana" --tier light --no-openwebui
+    run colleague create ana@example.org "Ana" --tier light --no-openwebui
     assert_ok
     body="$(litellm_body_for /key/generate)"
     [ "$(field "$body" max_budget)" = "0.5" ]
@@ -115,7 +115,7 @@ has_field() {
 }
 
 @test "classroom tier sends its own limits" {
-    run colleague create turma@idia.org "Turma" --tier classroom --no-openwebui
+    run colleague create turma@example.org "Turma" --tier classroom --no-openwebui
     assert_ok
     body="$(litellm_body_for /key/generate)"
     [ "$(field "$body" max_budget)" = "20.0" ]
@@ -127,7 +127,7 @@ has_field() {
     # "Unlimited" has to be an absent field. Sending rpm_limit: 0 is a real
     # risk here, and LiteLLM reads it as "zero requests per minute" — a tier
     # advertised as unrestricted that blocks every call.
-    run colleague create chefe@idia.org "Chefe" --tier heavy --no-openwebui
+    run colleague create chefe@example.org "Chefe" --tier heavy --no-openwebui
     assert_ok
     body="$(litellm_body_for /key/generate)"
     [ "$(field "$body" max_budget)" = "10.0" ]
@@ -138,7 +138,7 @@ has_field() {
 }
 
 @test "explicit flags override the tier defaults" {
-    run colleague create ana@idia.org "Ana" --tier light \
+    run colleague create ana@example.org "Ana" --tier light \
         --budget 7 --budget-period 30d --rpm 99 --tpm 12345 --no-openwebui
     assert_ok
     body="$(litellm_body_for /key/generate)"
@@ -149,7 +149,7 @@ has_field() {
 }
 
 @test "optional flags only appear in the payload when given" {
-    run colleague create ana@idia.org "Ana" --no-openwebui
+    run colleague create ana@example.org "Ana" --no-openwebui
     assert_ok
     body="$(litellm_body_for /key/generate)"
     for absent in max_parallel_requests expires tags blocked; do
@@ -159,7 +159,7 @@ has_field() {
 }
 
 @test "max-parallel, expires, tag and blocked reach the payload when given" {
-    run colleague create ana@idia.org "Ana" --max-parallel 3 --expires 30d \
+    run colleague create ana@example.org "Ana" --max-parallel 3 --expires 30d \
         --tag turma-b --blocked --no-openwebui
     assert_ok
     body="$(litellm_body_for /key/generate)"
@@ -172,7 +172,7 @@ has_field() {
 # ── Models ───────────────────────────────────────────────────────────────────
 
 @test "models default to what the .env configures" {
-    run colleague create ana@idia.org "Ana" --no-openwebui
+    run colleague create ana@example.org "Ana" --no-openwebui
     assert_ok
     body="$(litellm_body_for /key/generate)"
     [ "$(field "$body" models)" = "['mistral-7b']" ]
@@ -180,7 +180,7 @@ has_field() {
 
 @test "multi-model .env contributes every configured model" {
     write_env "MODELS_COUNT=2" "MODEL_1_ID=qwen3-8b" "MODEL_2_ID=mistral-7b"
-    run colleague create ana@idia.org "Ana" --no-openwebui
+    run colleague create ana@example.org "Ana" --no-openwebui
     assert_ok
     body="$(litellm_body_for /key/generate)"
     [ "$(field "$body" models)" = "['qwen3-8b', 'mistral-7b']" ]
@@ -188,7 +188,7 @@ has_field() {
 
 @test "--models narrows the grant to the named models" {
     write_env "MODELS_COUNT=2" "MODEL_1_ID=qwen3-8b" "MODEL_2_ID=mistral-7b"
-    run colleague create ana@idia.org "Ana" --models mistral-7b --no-openwebui
+    run colleague create ana@example.org "Ana" --models mistral-7b --no-openwebui
     assert_ok
     body="$(litellm_body_for /key/generate)"
     [ "$(field "$body" models)" = "['mistral-7b']" ]
@@ -197,9 +197,9 @@ has_field() {
 @test "an .env with no model configured is refused" {
     write_env
     # Overwrite without MODEL_ID: the file the script reads must have none.
-    grep -v '^MODEL_ID=' "$IDIA_ENV_FILE" >"${IDIA_ENV_FILE}.tmp"
-    mv "${IDIA_ENV_FILE}.tmp" "$IDIA_ENV_FILE"
-    run colleague create ana@idia.org "Ana" --no-openwebui
+    grep -v '^MODEL_ID=' "$BASE_INFERENCE_ENV_FILE" >"${BASE_INFERENCE_ENV_FILE}.tmp"
+    mv "${BASE_INFERENCE_ENV_FILE}.tmp" "$BASE_INFERENCE_ENV_FILE"
+    run colleague create ana@example.org "Ana" --no-openwebui
     assert_fails
     assert_contains "Nenhum modelo configurado"
 }
@@ -210,7 +210,7 @@ has_field() {
     stop_litellm
     start_litellm --seed-alias ana
     write_env
-    run colleague create ana@idia.org "Ana" --no-openwebui
+    run colleague create ana@example.org "Ana" --no-openwebui
     assert_ok
     # The delete must have been sent, and it must name the seeded token.
     run bash -c "grep -c '\"path\": \"/key/delete\"' '$LITELLM_LOG'"
@@ -222,7 +222,7 @@ has_field() {
     stop_litellm
     start_litellm --seed-alias someone-else
     write_env
-    run colleague create ana@idia.org "Ana" --no-openwebui
+    run colleague create ana@example.org "Ana" --no-openwebui
     assert_ok
     run bash -c "grep -c '\"path\": \"/key/delete\"' '$LITELLM_LOG' || true"
     [ "$output" = "0" ]
@@ -236,7 +236,7 @@ has_field() {
     stop_litellm
     start_litellm --mode no-key
     write_env
-    run colleague create ana@idia.org "Ana" --no-openwebui
+    run colleague create ana@example.org "Ana" --no-openwebui
     assert_fails
     assert_contains "não devolveu uma chave válida"
 }
@@ -245,7 +245,7 @@ has_field() {
     stop_litellm
     start_litellm --mode error
     write_env
-    run colleague create ana@idia.org "Ana" --no-openwebui
+    run colleague create ana@example.org "Ana" --no-openwebui
     assert_fails
     assert_contains "não devolveu uma chave válida"
 }
@@ -258,22 +258,22 @@ has_field() {
     # diagnostic is the fix, not the test.
     stop_litellm
     write_env "LITELLM_PORT=1"
-    run colleague create ana@idia.org "Ana" --no-openwebui
+    run colleague create ana@example.org "Ana" --no-openwebui
     assert_fails
 }
 
 # ── Environment validation ───────────────────────────────────────────────────
 
 @test "a .env without LITELLM_MASTER_KEY is refused by name" {
-    grep -v '^LITELLM_MASTER_KEY=' "$IDIA_ENV_FILE" >"${IDIA_ENV_FILE}.tmp"
-    mv "${IDIA_ENV_FILE}.tmp" "$IDIA_ENV_FILE"
-    run colleague create ana@idia.org "Ana" --no-openwebui
+    grep -v '^LITELLM_MASTER_KEY=' "$BASE_INFERENCE_ENV_FILE" >"${BASE_INFERENCE_ENV_FILE}.tmp"
+    mv "${BASE_INFERENCE_ENV_FILE}.tmp" "$BASE_INFERENCE_ENV_FILE"
+    run colleague create ana@example.org "Ana" --no-openwebui
     assert_fails
     assert_contains "LITELLM_MASTER_KEY"
 }
 
 @test "the master key is sent as a bearer token, never in the payload" {
-    run colleague create ana@idia.org "Ana" --no-openwebui
+    run colleague create ana@example.org "Ana" --no-openwebui
     assert_ok
     body="$(litellm_body_for /key/generate)"
     case "$body" in
@@ -286,20 +286,20 @@ has_field() {
 # ── Hostile input reaches the wire as data ───────────────────────────────────
 
 @test "an apostrophe in the name survives to the credentials" {
-    run colleague create ana@idia.org "Ana D'Ávila" --no-openwebui
+    run colleague create ana@example.org "Ana D'Ávila" --no-openwebui
     assert_ok
 }
 
 @test "a name carrying a shell payload is inert and stays data" {
     marker="${BATS_TEST_TMPDIR}/pwned"
-    run colleague create ana@idia.org "x'); import os; os.system('touch ${marker}'); #" \
+    run colleague create ana@example.org "x'); import os; os.system('touch ${marker}'); #" \
         --no-openwebui
     assert_ok
     [ ! -e "$marker" ]
 }
 
 @test "an alias with a quote is sent as a JSON string, not broken JSON" {
-    run colleague create "o'brien@idia.org" "O'Brien" --no-openwebui
+    run colleague create "o'brien@example.org" "O'Brien" --no-openwebui
     assert_ok
     body="$(litellm_body_for /key/generate)"
     [ "$(field "$body" key_alias)" = "o'brien" ]
@@ -308,19 +308,19 @@ has_field() {
 # ── Argument handling ────────────────────────────────────────────────────────
 
 @test "create without a name is refused with usage" {
-    run colleague create ana@idia.org
+    run colleague create ana@example.org
     assert_fails
     assert_contains "Uso:"
 }
 
 @test "an unknown flag is refused and named" {
-    run colleague create ana@idia.org "Ana" --nao-existe
+    run colleague create ana@example.org "Ana" --nao-existe
     assert_fails
     assert_contains "--nao-existe"
 }
 
 @test "an invalid tier is refused and the valid ones listed" {
-    run colleague create ana@idia.org "Ana" --tier gigante --no-openwebui
+    run colleague create ana@example.org "Ana" --tier gigante --no-openwebui
     assert_fails
     assert_contains "gigante"
     assert_contains "light"
@@ -332,7 +332,7 @@ has_field() {
 @test "a missing Open WebUI container is refused before any key is created" {
     # Ordering matters: failing after /key/generate leaves an orphan key in
     # LiteLLM that nobody will ever use and nothing will clean up.
-    run colleague create ana@idia.org "Ana"
+    run colleague create ana@example.org "Ana"
     assert_fails
     assert_contains "idia-webui-test"
     [ -z "$(litellm_body_for /key/generate)" ]
@@ -340,48 +340,48 @@ has_field() {
 
 @test "the full path runs when the container is present" {
     export FAKE_DOCKER_CONTAINERS="idia-webui-test"
-    run colleague create ana@idia.org "Ana"
+    run colleague create ana@example.org "Ana"
     assert_ok
     assert_contains "CREDENCIAIS"
-    assert_contains "ana@idia.org"
+    assert_contains "ana@example.org"
     [ -n "$(litellm_body_for /key/generate)" ]
 }
 
 @test "an Open WebUI that returns no user id is refused" {
     export FAKE_DOCKER_CONTAINERS="idia-webui-test"
     export FAKE_OWUI_USER_ID=""
-    run colleague create ana@idia.org "Ana"
+    run colleague create ana@example.org "Ana"
     assert_fails
     assert_contains "id de usuário"
 }
 
 @test "the discovery key is skipped with a warning when unset" {
     export FAKE_DOCKER_CONTAINERS="idia-webui-test"
-    run colleague create ana@idia.org "Ana"
+    run colleague create ana@example.org "Ana"
     assert_ok
     assert_contains "OWUI_DISCOVERY_KEY"
 }
 
 @test "the generated password is never the same twice" {
     export FAKE_DOCKER_CONTAINERS="idia-webui-test"
-    run colleague create ana@idia.org "Ana"
+    run colleague create ana@example.org "Ana"
     assert_ok
     first="$output"
-    run colleague create ana@idia.org "Ana"
+    run colleague create ana@example.org "Ana"
     assert_ok
     [ "$first" != "$output" ]
 }
 
 @test "an explicit --password is the one handed over" {
     export FAKE_DOCKER_CONTAINERS="idia-webui-test"
-    run colleague create ana@idia.org "Ana" --password trocar-no-primeiro-login
+    run colleague create ana@example.org "Ana" --password trocar-no-primeiro-login
     assert_ok
     assert_contains "trocar-no-primeiro-login"
 }
 
 @test "the role reaches the Open WebUI call" {
     export FAKE_DOCKER_CONTAINERS="idia-webui-test"
-    run colleague create prof@idia.org "Prof" --role admin
+    run colleague create prof@example.org "Prof" --role admin
     assert_ok
     assert_contains "admin"
 }
@@ -389,14 +389,14 @@ has_field() {
 # ── key: the create shortcut ─────────────────────────────────────────────────
 
 @test "key <email> provisions without touching Open WebUI" {
-    run colleague key ana@idia.org
+    run colleague key ana@example.org
     assert_ok
     assert_contains "sk-fake-"
     [ -z "$(docker_log)" ]
 }
 
 @test "key derives the name from the email and honours --tier" {
-    run colleague key ana@idia.org --tier light
+    run colleague key ana@example.org --tier light
     assert_ok
     body="$(litellm_body_for /key/generate)"
     [ "$(field "$body" key_alias)" = "ana" ]

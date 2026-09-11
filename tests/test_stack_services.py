@@ -121,7 +121,7 @@ class TestWebInterface:
     def test_no_literal_discovery_key(self, repo_root: Path) -> None:
         raw = (repo_root / "docker-compose.yml").read_text(encoding="utf-8")
         assert "OPENAI_API_KEY=${OWUI_DISCOVERY_KEY" in raw
-        assert "sk-idia" not in raw
+        assert "sk-base" not in raw
 
 
 # ── Port surface ────────────────────────────────────────────────────────

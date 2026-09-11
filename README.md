@@ -1,4 +1,4 @@
-# IDIA Server
+# base-inference
 
 **Servidor de inferência LLM do PUC-Behring Institute for AI.**
 
@@ -27,14 +27,14 @@ primeiro pedido, e a escolha é por modelo.
 ```bash
 cp .env.example .env        # preencha HF_TOKEN, LITELLM_MASTER_KEY,
                             # POSTGRES_PASSWORD, UI_PASSWORD
-./idia deploy local         # primeira vez: 5–15 min baixando os pesos
-./idia status               # serviços, modelos carregados, GPU
+./base-inference deploy local         # primeira vez: 5–15 min baixando os pesos
+./base-inference status               # serviços, modelos carregados, GPU
 ```
 
 Dar acesso a alguém:
 
 ```bash
-./idia colleague create ana@idia.org "Ana Costa" --tier regular
+./base-inference colleague create ana@example.org "Ana Costa" --tier regular
 ```
 
 Um comando cria a chave virtual, a conta na interface web, o vínculo entre as
