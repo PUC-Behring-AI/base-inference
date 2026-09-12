@@ -165,57 +165,16 @@ services:
     restart: unless-stopped
 
   # ── Interface ─────────────────────────────────────────────────────────
-  # Open WebUI is the screen every user of the institute opens. It talks to
-  # LiteLLM as an ordinary OpenAI-compatible backend.
+  # Open WebUI moved to base-interface on 2026-09-12 (base-platform#14). It
+  # still depends on this layer's `litellm` service by name, which is why it
+  # is the composed base (base-platform/compose.base.yaml), not this file
+  # alone, that gives you a working interface again -- see
+  # base-interface/compose.yaml for the service itself.
   #
-  # The container name is fixed: scripts/colleague.sh reaches into this
-  # container's SQLite to create accounts and model access grants (ADR-009),
-  # and a renamed container breaks provisioning.
-  open-webui:
-    # Pinned by digest, and deliberately without a tag: the only tag upstream
-    # publishes for this image is ':main', which moves on every push. Since
-    # colleague.sh writes into this container's SQLite schema, a silent image
-    # swap breaks provisioning halfway (ADR-009).
-    #
-    # This is the build the provisioning was written and verified against:
-    #   built    2026-07-01, upstream commit ecd48e2f718220a6400ecf49eafd4867a38feb10
-    #   platforms  linux/amd64 + linux/arm64 (OCI index — safe on the g5 and on a dev Mac)
-    #
-    # Bumping it is a decision, not an accident: read ADR-009 first, then
-    # re-verify the tables colleague.sh touches before changing this line.
-    image: ghcr.io/open-webui/open-webui@sha256:a26effeb220e132482bf7e0560b3404843e7bc40d23051144e062960df8df6b0
-    container_name: ${OWUI_CONTAINER:-idia-webui}
-    depends_on:
-      litellm:
-        condition: service_healthy
-    ports:
-      # Published to the network, unlike Grafana: this is the interface users
-      # reach from their own machines. It is the second and last externally
-      # reachable port, and a deliberate exception to the "only 4000" rule in
-      # §9.1 — see ADR-013 for why, and for the reverse-proxy caveat.
-      - "${OWUI_PORT:-3001}:8080"
-    volumes:
-      - webui_data:/app/backend/data
-    environment:
-      - WEBUI_AUTH=true
-      # Signup closed: accounts are provisioned by ./base-inference colleague, which is
-      # what links the LiteLLM key and the per-model grants. A self-registered
-      # account has neither and sees an empty model dropdown.
-      - ENABLE_SIGNUP=false
-      - OPENAI_API_BASE_URL=http://litellm:4000/v1
-      # Discovery key — lists available models only. Never a user's key.
-      - OPENAI_API_KEY=${OWUI_DISCOVERY_KEY:-}
-    healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/health"]
-      interval: 30s
-      timeout: 5s
-      retries: 5
-      start_period: 60s
-    deploy:
-      resources:
-        limits:
-          memory: "${OWUI_MEMORY_LIMIT:-2g}"
-    restart: unless-stopped
+  # scripts/colleague.sh still reaches into that container by name for
+  # account and model-grant provisioning (ADR-009, ADR-013 -- both moved to
+  # base-interface/docs/ADR.md, same reason). Container names are
+  # host-global, so this keeps working across the repository split.
 
   # ── Monitoring ────────────────────────────────────────────────────────
   # The metrics backend is NOT here. Prometheus and Grafana belong to the
@@ -260,6 +219,3 @@ volumes:
   # loses their key and their accumulated spend record.
   postgres_data:
     name: idia_postgres_data
-  # Open WebUI accounts, conversations and model access grants.
-  webui_data:
-    name: idia_webui_data
