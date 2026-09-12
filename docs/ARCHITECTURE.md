@@ -321,19 +321,24 @@ não entrega sozinha: por que cada peça está lá.
 | `ray-head` | Ray Serve LLM + vLLM — os pesos e o KV cache | nenhuma publicada |
 | `postgres` | Banco do LiteLLM: virtual keys, spend, rate limits (ADR-012) | nenhuma publicada |
 | `litellm` | Gateway: auth, budgets, roteamento, spend tracking | **4000**, externa |
-| `open-webui` | Interface de chat dos usuários (ADR-013) | **3001**, externa |
-| `prometheus` | Coleta de métricas | nenhuma publicada |
-| `grafana` | Dashboards e alertas | 3000, apenas `127.0.0.1` |
 | `dcgm-exporter` | Métricas de GPU; perfil `gpu`, pulado sem NVIDIA | nenhuma publicada |
 
-Duas portas são alcançáveis pela rede: 4000 e 3001. Ray ingress (8000),
-dashboard (8265), client (10001), Prometheus (9090), PostgreSQL (5432) e
-DCGM (9400) nunca são publicadas — §9.2 explica o custo de furar isso.
+> *`open-webui` moveu para `base-interface` em 2026-09-12
+> (base-platform#14) — ver `base-interface/compose.yaml`. `prometheus` e
+> `grafana` já não vivem aqui desde a migração de observabilidade para
+> `base-platform`, mudança anterior a esta cujas referências residuais em
+> outras partes deste documento (§5.5 em diante) não foram corrigidas aqui —
+> registrado em issue própria (#52) em vez de ampliado de
+> passagem nesta mudança.*
+
+Apenas uma porta é alcançável pela rede: 4000. Ray ingress (8000),
+dashboard (8265), client (10001), PostgreSQL (5432) e DCGM (9400) nunca são
+publicadas — §9.2 explica o custo de furar isso.
 `tests/test_stack_services.py::TestPortSurface` falha se o conjunto mudar.
 
 **Ordem de inicialização.** `litellm` espera `postgres` **e** `ray-head`
-saudáveis; `open-webui` espera `litellm` saudável. Sem a espera pelo banco,
-o LiteLLM sobe antes de o Postgres aceitar conexão e morre na primeira
+saudáveis. Sem a espera pelo banco, o LiteLLM sobe antes de o Postgres
+aceitar conexão e morre na primeira
 migração.
 
 **Decisões que o arquivo carrega e o motivo de cada uma**
@@ -347,9 +352,10 @@ migração.
 - **Segredos sem default silencioso.** `POSTGRES_PASSWORD` e `UI_PASSWORD`
   usam `${VAR:?mensagem}`: sem valor no `.env`, o compose recusa subir
   nomeando a variável, em vez de subir com senha vazia.
-- **Limites de memória.** `ray-head` em 16 GB com reserva de 8 GB (SEC-11),
-  Prometheus em 1 GB para conter o crescimento do TSDB (INFRA-01), Open WebUI
-  em 2 GB. Todos configuráveis por env var.
+- **Limites de memória.** `ray-head` em 16 GB com reserva de 8 GB (SEC-11).
+  Todos configuráveis por env var. (Prometheus e Open WebUI's próprios
+  limites moveram com os serviços — ver a nota acima e
+  `base-interface/compose.yaml`.)
 - **Memória compartilhada.** `shm_size` via `RAY_SHM_SIZE` (default 4 GB),
   necessária para modelos grandes (INFRA-02).
 - **Healthchecks em `python3 urllib`, não `curl`.** A imagem do LiteLLM não
@@ -365,9 +371,10 @@ migração.
   serviço em vez de falhar.
 
 **Volumes nomeados.** `postgres_data` guarda as chaves de todos os usuários e
-o histórico de gasto; `webui_data` guarda contas, conversas e grants;
-`idia_hf_cache` guarda os pesos; `prometheus_data` e `grafana_data`, as
-métricas e os dashboards. Nenhum tem backup automático — ver ADR-012.
+o histórico de gasto; `idia_hf_cache` guarda os pesos. Nenhum tem backup
+automático — ver ADR-012. (`webui_data` moveu para `base-interface` junto
+com o serviço; `prometheus_data` e `grafana_data` já não vivem aqui — ver a
+nota após a tabela de serviços.)
 
 ### 5.5 `.env`
 
@@ -473,23 +480,30 @@ inclusion, which left the version unspecified.
 
 ### 5.7 Open WebUI — interface de chat
 
-O Open WebUI é a interface que os usuários do instituto abrem. Ele fala com o
-LiteLLM como um backend OpenAI-compatível qualquer, e é um serviço do
-`docker-compose.yml` como os demais: healthcheck, `restart: unless-stopped`,
-limite de memória, volume nomeado, e `depends_on: litellm` com
-`condition: service_healthy`. Sobe e para com o resto da stack, e aparece em
-`./base-inference status`.
+**Este serviço não roda mais neste repositório.** Moveu para
+`base-interface` em 2026-09-12 (base-platform#14), junto com o volume
+`webui_data`; ver `base-interface/compose.yaml` e `base-interface/docs/ADR.md`
+(ADR-009, ADR-013, também relocadas). O que fica aqui é o que ainda
+depende deste lado da fronteira: `scripts/colleague.sh` (§5.8) continua
+alcançando aquele container pelo nome (`OWUI_CONTAINER`, default
+`idia-webui`) para criar contas e grants, o que segue funcionando porque
+nomes de container são globais no host Docker — desde que este repositório
+e `base-interface` sejam compostos juntos via
+`base-platform/compose.base.yaml`. Rodar só este `docker-compose.yml` já não
+inclui uma interface para abrir.
 
-O nome do container é fixo (`idia-webui`, configurável por `OWUI_CONTAINER`)
-porque o `colleague.sh` acessa o SQLite dentro dele para criar contas e
-grants. Ver ADR-013.
+O Open WebUI fala com o LiteLLM deste repositório como um backend
+OpenAI-compatível comum, por isso o serviço em `base-interface` depende de
+`litellm` estar saudável — dependência que só `compose.base.yaml` consegue
+declarar, já que nenhum dos dois arquivos sozinho conhece o outro serviço
+(ver o comentário em `compose.base.yaml`).
 
-**A porta 3001 é publicada na rede** — a segunda e última porta externa, ao
-lado da 4000. É exceção consciente à regra "só a 4000" da §9.1: uma interface
-que ninguém alcança não serve. O que a exceção não dispensa é TLS: o Open
-WebUI não termina TLS, então em rede não confiável ele pertence atrás de um
-proxy reverso. `OWUI_PORT` permite movê-la ou prendê-la em `127.0.0.1` e
-tunelar.
+**A porta 3001, publicada por `base-interface` agora**, é a segunda e
+última porta externa da plataforma composta, ao lado da 4000 deste
+repositório. Continua exceção consciente à regra "só a 4000" da §9.1 de
+cada camada: uma interface que ninguém alcança não serve. O que a exceção
+não dispensa é TLS — ver ADR-013 (agora em `base-interface`) para o porquê
+e a ressalva do proxy reverso.
 
 `OWUI_DISCOVERY_KEY` vem do `.env` e é uma virtual key dedicada — usada
 apenas para **listar** os modelos disponíveis. Ela nunca deve ser uma chave

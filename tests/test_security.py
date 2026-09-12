@@ -33,18 +33,18 @@ class TestPortIsolation:
     """
 
     def test_only_decided_ports_published(self, repo_root: Path) -> None:
-        """Only 4000 (API) and 3001 (Open WebUI) are reachable from the network.
+        """Only 4000 (API) is reachable from the network.
 
-        4000 was the sole external port until the chat interface became a
-        Compose service. Publishing 3001 is a recorded exception, not drift —
-        ADR-013 states the reasoning and the reverse-proxy caveat. Adding a
-        third port is a decision, so it belongs in an ADR before it belongs
-        here.
+        3001 (Open WebUI) was a recorded exception here until the service
+        itself moved to base-interface (base-platform#14, 2026-09-12) — see
+        ADR-013, now relocated to base-interface/docs/ADR.md. Adding a second
+        port back here is a decision, so it belongs in an ADR before it
+        belongs here.
 
         Services bound to 127.0.0.1 (Grafana on 3000) are not network-reachable
         and are permitted. See ARCHITECTURE.md §9.1.
         """
-        allowed = {"4000", "3001"}
+        allowed = {"4000"}
         path = repo_root / "docker-compose.yml"
         if not path.exists():
             pytest.skip("docker-compose.yml not created yet")
@@ -122,10 +122,6 @@ MOVING_TAGS = frozenset(
     {"latest", "main", "master", "dev", "develop", "edge", "nightly"}
 )
 
-# Services whose *internal* schema our own code reads. A tag pin is not enough
-# here: a rebuild of the same tag can migrate the database under the
-# provisioning writes. Digest is the only reference that cannot move (ADR-009).
-DIGEST_REQUIRED_SERVICES = frozenset({"open-webui"})
 
 
 def _image_tag(image: str) -> str | None:
@@ -186,32 +182,10 @@ class TestImagePinning:
                 f"upstream push (§9.1)"
             )
 
-    def test_services_we_reach_into_are_pinned_by_digest(
-        self, repo_root: Path
-    ) -> None:
-        """Open WebUI is pinned by digest, not merely by tag.
-
-        ``scripts/colleague.sh`` writes into this container's SQLite tables. A
-        tag rebuild that migrates the schema breaks provisioning halfway: the
-        LiteLLM key is already issued and the account is not created, leaving an
-        orphan for the operator to clean by hand (ADR-009).
-        """
-        path = repo_root / "docker-compose.yml"
-        if not path.exists():
-            pytest.skip("docker-compose.yml not created yet")
-        compose = yaml.safe_load(path.read_text(encoding="utf-8"))
-        for svc_name in DIGEST_REQUIRED_SERVICES:
-            svc = compose.get("services", {}).get(svc_name)
-            assert svc is not None, (
-                f"Service '{svc_name}' is gone from docker-compose.yml — if it "
-                f"was renamed, update DIGEST_REQUIRED_SERVICES with it"
-            )
-            image = str(svc.get("image", ""))
-            assert "@sha256:" in image, (
-                f"Service '{svc_name}' is '{image}', pinned by tag at best. Our "
-                f"code depends on its internal schema, so it must be pinned by "
-                f"digest — see ADR-009"
-            )
+    # test_services_we_reach_into_are_pinned_by_digest moved to
+    # base-interface/tests/test_compose.py on 2026-09-12 (base-platform#14):
+    # open-webui, the one service colleague.sh's schema assumption depends
+    # on, is declared in that repository's compose.yaml now, not this one's.
 
 
 @pytest.mark.security

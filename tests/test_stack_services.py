@@ -21,8 +21,9 @@ import pytest
 import yaml
 
 # Reachable from the network, by decision. Grafana is bound to loopback and
-# therefore is not in this set — it is checked separately.
-EXPECTED_PUBLIC_PORTS = {"4000", "3001"}
+# therefore is not in this set — it is checked separately. Open WebUI's 3001
+# moved with the service to base-interface (base-platform#14).
+EXPECTED_PUBLIC_PORTS = {"4000"}
 
 # Never publishable: Ray ingress, Ray dashboard, Ray client, Prometheus,
 # PostgreSQL, DCGM.
@@ -94,34 +95,20 @@ class TestGatewayDatabase:
         )
 
 
-# ── Chat interface (ADR-013) ────────────────────────────────────────────
+# ── Chat interface ───────────────────────────────────────────────────────
+# Open WebUI moved to base-interface on 2026-09-12 (base-platform#14). Its
+# own compose.yaml carries the tests this file used to hold (container name,
+# healthy-gateway wait, closed signup, data volume, no literal discovery
+# key) — see base-interface/tests/test_compose.py.
 
 
-class TestWebInterface:
-    def test_open_webui_is_a_service(self, compose: dict) -> None:
-        assert "open-webui" in compose["services"]
+class TestWebInterfaceHasLeftThisRepository:
+    def test_open_webui_does_not_run_here(self, compose: dict) -> None:
+        """Guards against the service quietly coming back after the move."""
+        assert "open-webui" not in compose["services"]
 
-    def test_container_name_is_fixed(self, compose: dict) -> None:
-        """colleague.sh reaches into this container by name (ADR-009)."""
-        name = compose["services"]["open-webui"].get("container_name", "")
-        assert "idia-webui" in name
-
-    def test_waits_for_a_healthy_gateway(self, compose: dict) -> None:
-        depends = compose["services"]["open-webui"]["depends_on"]
-        assert depends["litellm"]["condition"] == "service_healthy"
-
-    def test_signup_is_closed(self, compose: dict) -> None:
-        """A self-registered account has no key and no grants — an empty dropdown."""
-        env = "\n".join(compose["services"]["open-webui"]["environment"])
-        assert "ENABLE_SIGNUP=false" in env
-
-    def test_data_volume_is_declared(self, compose: dict) -> None:
-        assert "webui_data" in compose["volumes"]
-
-    def test_no_literal_discovery_key(self, repo_root: Path) -> None:
-        raw = (repo_root / "docker-compose.yml").read_text(encoding="utf-8")
-        assert "OPENAI_API_KEY=${OWUI_DISCOVERY_KEY" in raw
-        assert "sk-base" not in raw
+    def test_webui_data_volume_does_not_live_here(self, compose: dict) -> None:
+        assert "webui_data" not in (compose.get("volumes") or {})
 
 
 # ── Port surface ────────────────────────────────────────────────────────

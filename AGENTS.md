@@ -347,7 +347,6 @@ Cada classe de teste valida a estrutura de um arquivo de configuração contra a
 | `TestPortIsolation.test_ray_client_not_published` | Porta 10001 NÃO está em `ports:` |
 | `TestImagePinning.test_dockerfile_base_image_is_not_on_a_moving_tag` | Nenhum `FROM` do Dockerfile.ray usa tag móvel (`latest`, `main`, `master`, `dev`, `develop`, `edge`, `nightly`, ou tag omitida) |
 | `TestImagePinning.test_compose_images_are_not_on_moving_tags` | Nenhum serviço no Compose usa tag móvel |
-| `TestImagePinning.test_services_we_reach_into_are_pinned_by_digest` | Open WebUI pinado por `@sha256:` — nosso código depende do schema interno dele (ADR-009) |
 | `TestTrustBoundaries.test_generated_config_never_embeds_the_master_key` | o config renderizado nunca contém o valor real da master key |
 | `TestDashboardBinding.test_dashboard_host_set_to_localhost` | serve_config.yaml http_options.host=0.0.0.0 (proxy interno)
 | `TestMonitoringPortIsolation.test_no_backend_port_is_published` | Nenhuma porta de backend de métrica (9090, 3000) publicada — **nem em loopback**, porque "só no localhost" foi como o Grafana anterior se justificou
