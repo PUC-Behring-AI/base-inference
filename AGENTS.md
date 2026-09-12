@@ -1,5 +1,5 @@
 # AGENTS.md — base-inference
-# Segue AGENTS-base.md v1.0, em PUC-Behring-AI/base-platform/docs/AGENTS-base.md.
+# Segue AGENTS-base.md v1.1, em PUC-Behring-AI/base-platform/docs/AGENTS-base.md.
 # Aquele arquivo carrega os axiomas comuns aos dez repositórios; este carrega o
 # que é só desta camada. Em conflito, este vence.
 # Base: v0.2.0
