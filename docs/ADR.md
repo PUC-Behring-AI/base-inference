@@ -218,7 +218,7 @@ copyleft (alterações podem ser fechadas)]
 ---
 
 ## ADR-009: Visibilidade de modelos no Open WebUI — padrão override + access grants
-**Data:** 2026-09-03 | **Fase:** Provisionamento | **Status:** Accepted
+**Data:** 2026-09-03 | **Fase:** Provisionamento | **Status:** Moved to `base-interface/docs/ADR.md` (2026-09-12, base-platform#14) — full text kept here, unmodified, as the record of what was decided while this layer still owned Open WebUI
 
 **Contexto:** Era preciso dar aos colegas uma interface web com autenticação
 individual, mostrando no dropdown apenas os modelos que cada pessoa pode usar.
@@ -435,7 +435,7 @@ todos os usuários e o histórico de gasto, e perdê-lo é perder ambos. Um
 ---
 
 ## ADR-013: Open WebUI como serviço do Compose, publicado na 3001
-**Data:** 2026-09-03 | **Fase:** Interface | **Status:** Accepted
+**Data:** 2026-09-03 | **Fase:** Interface | **Status:** Moved to `base-interface/docs/ADR.md` (2026-09-12, base-platform#14) — full text kept here, unmodified, as the record of what was decided while this layer still owned Open WebUI
 
 **Contexto:** A interface que todos os usuários do instituto abrem existia
 apenas como um `docker run` copiado de um bloco da documentação. Fora do
